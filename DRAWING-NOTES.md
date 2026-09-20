@@ -29,8 +29,6 @@
 
 **Derinlik:** Eşyalar ayak izlerine göre topolojik sıralanır (A, i ya da j boyunca B başlamadan bitiyorsa arkadadır). Canlı ekranın önünde bir şey duruyorsa o ekran için küçük bir siluet maskesi üretilir; içerik geçici bir tuvale çizilip maske oyulduktan sonra yerine konur.
 
-**Stil denemesi:** `style-technical.html` — aynı ofis, referanstaki beyaz-gri teknik çizim stilinde (`STYLES.teknik`). Sayfa kontur kalınlığı, gölge ve vurgu rengi varyantlarını yan yana denemek için; oyuna bağlı değil. Stilin kendisi `js/engine.js` içinde, oyuna almak için `LOOK_OPTIONS.style` listesine eklemek yeterli.
-
 **Modlar:** `/` = oyun (boş oda + başlangıç envanteri). `?sandbox` = serbest çizim tahtası: her eşya sınırsız, "Gece vardiyası" demo odası (`?default`, `?stress`, `?live` de bu moda girer). `?view=front` deneysel karşıdan projeksiyon.
 
 **URL parametreleri:** `sandbox`, `view`, `style`, sayısal stil alanları (`wobble`, `shift`, `patScale`, `soften`, `tw/th/tz`…), `edit`, `default`, `hud`, `stress=N`, `live=N`, `pan`, `legacy`.

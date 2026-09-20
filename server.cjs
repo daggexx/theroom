@@ -144,12 +144,27 @@ function serveFile(res, pathname){
   });
 }
 
-http.createServer((req, res) => {
+function handle(req, res){
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   if(pathname === '/favicon.ico'){ res.writeHead(204); return res.end(); }
   if(pathname.startsWith('/api/'))
     return api(req, res, pathname).catch(error => send(res, 500, {error: error.message}));
   serveFile(res, pathname);
-}).listen(config.port || 4173, '127.0.0.1', () => {
-  console.log(`theroom on http://127.0.0.1:${config.port || 4173}  ·  ${config.mode === 'privy' ? 'Privy girişi açık' : 'misafir modu (Privy yapılandırılmadı)'}`);
-});
+}
+
+// Loopback only, but on both families: Windows often resolves "localhost" to ::1, and Privy's allowed-origin
+// list wants a localhost URL, so the page has to answer under both spellings.
+const port = config.port || 4173;
+const hosts = config.hosts || ['127.0.0.1', '::1'];
+let listening = 0;
+for(const host of hosts){
+  const server = http.createServer(handle);
+  server.on('error', error => {
+    if(error.code !== 'EADDRNOTAVAIL' && error.code !== 'EAFNOSUPPORT') console.warn(host + ': ' + error.message);
+  });
+  server.listen(port, host, () => {
+    if(listening++) return;
+    console.log('theroom on http://localhost:' + port + ' (ve http://127.0.0.1:' + port + ')  ·  ' +
+      (config.mode === 'privy' ? 'Privy girişi açık' : 'misafir modu (Privy yapılandırılmadı)'));
+  });
+}

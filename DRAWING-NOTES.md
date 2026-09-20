@@ -4,7 +4,7 @@
 
 **Giriş ve sunucu:** `server.cjs` hem dosyaları sunar hem küçük bir durum API'si (`/api/config`, `GET|PUT /api/state`) çalıştırır; bağımlılık yok. Privy erişim jetonu ES256 JWT olduğu için Node'un kendi `crypto`'su ile doğrulanır — **uygulama sırrı (app secret) gerekmez**, panelden alınan açık doğrulama anahtarı yeter.
 
-Privy'yi açmak için: `config.example.json` → `config.json`, içine dashboard.privy.io'dan App ID ve Configuration → App settings'teki Verification key (PEM). Sunucuyu yeniden başlat. Anahtar dolu değilse sunucu **misafir modunda** açılır: istemci kendi ürettiği yerel kimliği gönderir, sunucu ona güvenir. Oyun çalışır ve test edilebilir ama **yayına uygun değildir**. `config.json` ve `data/` git'te değil.
+Privy'yi açmak için: `config.example.json` → `config.json`, içine dashboard.privy.io'dan App ID ve Configuration → App settings'teki Verification key (PEM). Panelde **Settings → Domains → Allowed origins** listesine `http://localhost:4173` ekle (port şart). Sunucuyu yeniden başlat ve sayfayı `localhost` adresinden aç. Anahtar dolu değilse sunucu **misafir modunda** açılır: istemci kendi ürettiği yerel kimliği gönderir, sunucu ona güvenir. Oyun çalışır ve test edilebilir ama **yayına uygun değildir**. `config.json` ve `data/` git'te değil.
 
 | Dosya | İçerik |
 |---|---|

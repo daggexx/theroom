@@ -35,8 +35,10 @@ const DAILY_BASE=150,DAILY_STREAK=25,DAILY_MAX=300,DEAL_COUNT=3,DEAL_OFF=.3;
 let save;
 function loadGame(){try{save=JSON.parse(localStorage.getItem(SAVE_KEY))}catch{save=null}
  if(!save||typeof save.coins!=='number')save={v:1,coins:START.coins,inventory:{...START.inventory},claimed:[],daily:{last:'',streak:0},deals:{day:'',bought:[]}};
+ if(!save.player)save.player={id:Math.floor(Math.random()*65536).toString(16).padStart(4,'0'),name:''}; // a guest until sign-in exists
  save.inventory=save.inventory||{};save.claimed=save.claimed||[];save.daily=save.daily||{last:'',streak:0};save.deals=save.deals||{day:'',bought:[]}}
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(save))}catch{}}
+const playerTag=()=>save.player.name||('misafir #'+save.player.id);
 const owned=type=>save.inventory[type]||0;
 function give(type,n=1){save.inventory[type]=owned(type)+n;if(save.inventory[type]<=0)delete save.inventory[type];saveGame()}
 function earn(n){save.coins+=n;saveGame()}

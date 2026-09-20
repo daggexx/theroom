@@ -23,12 +23,31 @@ function cacheRoom(skip){const started=performance.now();base.width=B.w*SCALE;ba
  stats.build=performance.now()-started;hoveredScreen=null;if(selectedScreen)selectedScreen=screens[selectedScreen.id]||null;refreshScreenPicker();paintAt=0}
 function makePaper(){paper.width=paper.height=600;const g=paper.getContext('2d'),r=rng(43);g.fillStyle=INK.paper;g.fillRect(0,0,600,600);for(let n=0;n<10000;n++){g.fillStyle=S.grain[n%3?0:1];g.fillRect(r()*600,r()*600,r()*1.5+.4,r()*1+.3)}}
 
+// ---- BRAND AND PROFILE ------------------------------------------------------
+// The logo is a tiny room drawn by the engine; the avatar is a mirrored ink grid seeded by the player's handle.
+const seedOf=s=>{let h=2166136261;for(let k=0;k<s.length;k++)h=Math.imul(h^s.charCodeAt(k),16777619);return h>>>0};
+function paintLogo(){const cv=$('logo-mark'),k=2,previous=c;cv.width=cv.height=52*k;c=cv.getContext('2d');c.setTransform(.92,0,0,.92,52,44); // the mark is ~109x91 world px; this fits it into the 104px backing store
+ shape(tile(0,0,1.7,1.7),'teal',.42);
+ shape(faceJ(0,0,1.7,0,1.15),'blue',.72);shape(faceI(0,0,1.7,0,1.15),'blue',.84);
+ box(.5,.5,.75,.75,0,.55,'coral',.72);
+ const[x,y]=p(.88,.88,.95);glow(x,y,13,13,'sun',.34);dot(x,y,3,'sun');c=previous}
+function paintAvatar(){const cv=$('avatar'),k=2,W=34,cell=W/5,r=rng(seedOf(playerTag())),inks=['coral','sun','teal','blue'],previous=c;
+ cv.width=cv.height=W*k;c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);fill(rect(0,0,W,W),'paper',1);
+ for(let a=0;a<3;a++)for(let b=0;b<5;b++){const keep=r()>.4,ink=inks[Math.floor(r()*4)],tone=.5+Math.floor(r()*3)*.22;if(!keep)continue;
+  fill(rect(a*cell,b*cell,cell,cell),ink,tone,false);fill(rect((4-a)*cell,b*cell,cell,cell),ink,tone,false)}
+ c=previous}
+function refreshProfile(){const stats=$('player-stats');$('player-name').textContent=playerTag();stats.textContent='';
+ if(SANDBOX)stats.append('serbest mod');
+ else{const coins=document.createElement('b');coins.textContent='◉ '+fmt(save.coins);stats.append(coins,'  ·  ⌂ '+fmt(roomScore().total))}}
+$('connect').onclick=()=>flash('Cüzdan bağlama Privy ile gelecek');
+
 // ---- SCREEN DIALOG -------------------------------------------------------
 const screenDialog=$('screen-dialog'),screenView=$('screen-view'),screenContext=screenView.getContext('2d'),screenPicker=$('screen-picker');
 const SCREEN_NAMES={code:'Terminal',wave:'Sinyal dalgaları',map:'Ağ haritası',orbit:'Radar',bars:'Test yayını',grid:'Sistem durumu'};
 let hoveredScreen=null,selectedScreen=null,tap=null;
 const screenName=s=>`${String(s.id+1).padStart(2,'0')} / ${SCREEN_NAMES[s.mode]}`;
-function refreshScreenPicker(){screenPicker.length=1;for(const s of screens){const option=document.createElement('option');option.value=s.id;option.textContent=screenName(s);screenPicker.appendChild(option)}}
+function refreshScreenPicker(){screenPicker.length=1;screenPicker.hidden=!screens.length; // nothing to pick in a room with no displays
+ for(const s of screens){const option=document.createElement('option');option.value=s.id;option.textContent=screenName(s);screenPicker.appendChild(option)}}
 function toWorld(clientX,clientY){const b=canvas.getBoundingClientRect();return[(clientX-b.left-width/2-pan.x)/zoom+VIEW_CX,(clientY-b.top-height/2-pan.y-20)/zoom+VIEW_CY]}
 function screenAt(clientX,clientY){const[x,y]=toWorld(clientX,clientY);return[...screens].reverse().find(s=>pointInPolygon(s.outer,x,y))||null}
 function hover(s){if(editor.on)s=null;hoveredScreen=s;canvas.style.cursor=editor.on?'default':s?'pointer':'grab';canvas.title=s?`${screenName(s)} — açmak için tıkla`:'';paintAt=0}
@@ -40,7 +59,7 @@ screenPicker.onchange=()=>{if(screenPicker.value!=='')openScreen(screens[Number(
 
 // ---- FRAME ---------------------------------------------------------------
 // The catalogue covers the right edge (the bottom on a phone) while editing; the room is centred in what is left.
-function fit(){const side=editor.on&&width>700?290:0,below=editor.on&&width<=700?190:0;zoom=Math.max(.18,Math.min((width-side-50)/B.w,(height-below-145)/B.h));pan={x:-side/2,y:-below/2};paintAt=0}
+function fit(){const side=editor.on&&width>700?290:0,below=editor.on&&width<=700?318:0;zoom=Math.max(.18,Math.min((width-side-50)/B.w,(height-below-145)/B.h));pan={x:-side/2,y:-below/2};paintAt=0}
 function resize(){width=innerWidth;height=innerHeight;dpr=Math.min(2,devicePixelRatio||1);canvas.width=width*dpr;canvas.height=height*dpr;fit()}
 function backdrop(){c=ctx;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=ctx.createPattern(paper,'repeat');ctx.fillRect(0,0,width,height);
  ctx.translate(width/2+pan.x,height/2+pan.y+20);ctx.scale(zoom,zoom);ctx.translate(-VIEW_CX,-VIEW_CY);
@@ -80,7 +99,7 @@ function loop(now){requestAnimationFrame(loop);if(last){const gap=now-last;stats
 // New inks and patterns, one rebuild of the cached room, same camera.
 const stylePicker=$('style-picker');
 for(const k in STYLES){const option=document.createElement('option');option.value=k;option.textContent=STYLES[k].label;stylePicker.appendChild(option)}
-function switchStyle(name){setStyle(name);stylePicker.value=styleName;makePaper();cacheRoom(editor.held&&editor.held.ignore);thumbs.clear();refreshPanel();
+function switchStyle(name){setStyle(name);stylePicker.value=styleName;makePaper();cacheRoom(editor.held&&editor.held.ignore);thumbs.clear();refreshPanel();paintLogo();paintAvatar();
  const url=new URL(location.href);url.searchParams.set('style',styleName);history.replaceState(null,'',url)}
 stylePicker.onchange=()=>switchStyle(stylePicker.value);
 
@@ -89,7 +108,11 @@ stylePicker.onchange=()=>switchStyle(stylePicker.value);
 const editor={on:false,selected:null,held:null,pending:null,pointer:[0,0]};
 const snapTo=(v,step)=>Math.round(v/step)*step,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function itemAt(clientX,clientY){const[x,y]=toWorld(clientX,clientY);for(let k=paintList.length-1;k>=0;k--)if(room.items.includes(paintList[k])&&pointInPolygon(outline(paintList[k]),x,y))return paintList[k];return null}
-function select(it){editor.selected=it;$('selection').textContent=it?`${ITEMS[it.type].name}${ITEMS[it.type].modes?' · M: ekran':ITEMS[it.type].variants?' · M: çeşit':''}`:'';paintAt=0}
+function select(it){editor.selected=it;showHint();paintAt=0}
+function showHint(){const it=editor.selected;
+ $('hint').textContent=!editor.on?'Sürükle · Yakınlaş · Bir ekrana tıkla'
+  :it?`${ITEMS[it.type].name} · R döndür${ITEMS[it.type].modes?' · M ekran':ITEMS[it.type].variants?' · M çeşit':''} · Del kaldır`
+  :'Eşyayı sürükle · R döndür · Del kaldır · Esc bırak'}
 function hold(it,isNew){disarmLook();const kids=childrenOf(it).map(k=>({it:k,di:k.i-it.i,dj:k.j-it.j}));
  editor.held={it,kids,isNew,sticky:isNew,valid:false,ignore:new Set([it.id,...kids.map(k=>k.it.id)]),origin:JSON.stringify([it,...kids.map(k=>k.it)])};
  select(it);cacheRoom(editor.held.ignore)}
@@ -121,14 +144,14 @@ function removeSelected(){disarmLook();const it=editor.selected;if(!it||editor.h
 // M: next programme on a display, or the next look of an item that comes in several variants.
 function nextMode(){disarmLook();const it=editor.selected,def=it&&ITEMS[it.type];if(!it||editor.held||!(def.modes||def.variants))return;
  if(def.variants)it.variant=((it.variant||0)+1)%def.variants;else it.mode=SCREEN_MODES[(SCREEN_MODES.indexOf(it.mode)+1)%SCREEN_MODES.length];saveRoom();cacheRoom()}
-let flashTimer=0;function flash(text){const el=$('selection'),keep=el.textContent;el.textContent=text;clearTimeout(flashTimer);flashTimer=setTimeout(()=>select(editor.selected),1400)}
+let flashTimer=0;function flash(text){const el=$('toast');el.textContent=text;el.classList.add('on');clearTimeout(flashTimer);flashTimer=setTimeout(()=>el.classList.remove('on'),1800)}
 function drawEditor(){if(!editor.on)return;const h=editor.held;
  if(h){const it=h.it,f=kindOf(it)==='wall'?null:footprint(it),mark=f?tile(f.i0,f.j0,f.i1-f.i0,f.j1-f.j0,floorZ(it)+.01):outline(it);
   fill(mark,h.valid?'teal':'coral',.6,false);registering=false;ctx.globalAlpha=.9;for(const o of[it,...farToNear(h.kids.map(k=>k.it))])drawItem(o);ctx.globalAlpha=1;registering=true;strokeOutline(mark,1.5)}
  else if(editor.selected&&room.items.includes(editor.selected))strokeOutline(outline(editor.selected),1.5,true);
  drawExpansion()}
 function setEditing(on){disarmLook();if(!on&&editor.held)cancelHeld();expand.hover=expand.armed=null;editor.on=on;if(!on)select(null);document.body.classList.toggle('editing',on);$('edit').textContent=on?'Bitti ✓':'Düzenle ✎';$('edit').setAttribute('aria-pressed',String(on));
- $('hint').textContent=on?'Eşyayı sürükle · R döndür · Del kaldır · Esc bırak':'Sürükle · Yakınlaş · Bir ekrana tıkla';hover(null);if(width)fit()}
+ showHint();hover(null);if(width)fit()}
 $('edit').onclick=()=>setEditing(!editor.on);
 let resetArmed=0;$('reset-room').onclick=e=>{if(Date.now()-resetArmed>3000){resetArmed=Date.now();e.target.textContent='Emin misin?';setTimeout(()=>e.target.textContent='Odayı sıfırla',3000);return}
  resetArmed=0;e.target.textContent='Odayı sıfırla';editor.held=null;loadRoom(DEFAULT_ROOM);select(null);saveRoom();cacheRoom();refreshPanel();fit()};
@@ -153,7 +176,7 @@ const noteOf=type=>{const def=ITEMS[type];return KIND_NOTE[def.kind]||(def.canSt
 const TABS=SANDBOX?[['catalog','Katalog'],['look','Oda']]:[['inventory','Envanter'],['shop','Mağaza'],['look','Oda'],['quests','Görevler'],['score','Puan']];let tab=TABS[0][0];
 function row(html,cls=''){const el=document.createElement('div');el.className='row '+cls;el.innerHTML=html;return el}
 function refreshPanel(){const list=$('catalog-list'),tabs=$('tabs'),score=roomScore();const keepScroll=list.scrollTop;list.textContent='';tabs.textContent='';list.className=tab==='quests'||tab==='score'||tab==='look'?'rows':'';
- $('wallet').textContent=SANDBOX?'serbest mod · her eşya sınırsız':'◉ '+fmt(save.coins)+'  ·  oda puanı '+fmt(score.total);$('reset-room').hidden=!SANDBOX;
+ refreshProfile();$('reset-room').hidden=!SANDBOX;
  for(const[id,label]of TABS){const b=document.createElement('button');b.textContent=label+(id==='quests'&&questsReady()?' •':'')+(id==='shop'&&dailyReady()?' •':'');b.setAttribute('aria-pressed',String(id===tab));b.onclick=()=>{disarmLook();tab=id;list.scrollTop=0;refreshPanel()};tabs.appendChild(b)}
  const sections=each=>{for(const[id,label]of CATEGORIES){const types=Object.keys(ITEMS).filter(t=>categoryOf(t)===id).sort((x,y)=>priceOf(x)-priceOf(y));if(!types.length)continue;list.appendChild(row(label+' · '+types.length,'head'));types.forEach(each)}};
  if(tab==='catalog')sections(type=>list.appendChild(card(type,{lines:[noteOf(type)].filter(Boolean),onClick:()=>addNew(type)})));
@@ -249,4 +272,4 @@ addEventListener('resize',resize);
 loadRoom(QUERY.has('default')?DEFAULT_ROOM:storedRoom()||(SANDBOX?DEFAULT_ROOM:{v:1,items:[]}));
 if(room.style&&!QUERY.has('style'))setStyle(room.style); // the room carries its own print style
 document.body.classList.toggle('game',!SANDBOX);
-stylePicker.value=styleName;makePaper();cacheRoom();refreshPanel();resize();motionLabel();if(QUERY.has('edit'))setEditing(true);requestAnimationFrame(loop);
+stylePicker.value=styleName;makePaper();cacheRoom();refreshPanel();paintLogo();paintAvatar();showHint();resize();motionLabel();if(QUERY.has('edit'))setEditing(true);requestAnimationFrame(loop);

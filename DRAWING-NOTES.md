@@ -13,11 +13,13 @@
 | `js/room.js` | Oda verisi (JSON), yerleşim kuralları `placementOk`, boyama sırası `farToNear`, önbellek + ekran maskeleri |
 | `js/game.js` | Oyun katmanı (şimdilik yalnızca tarayıcıda): para, envanter, mağaza + günün fırsatları, günlük ödül, oda puanı + setler, görevler. Sayılar `PRICES`, `SETS`, `QUESTS`, `START` tablolarında. Kayıt: `localStorage['theroom.save.v1']`, oda: `theroom.game.room.v1` |
 | `js/generate.js` | Bir sayıdan oda döşeyen ilk kaba üretici (eskizlerde kullanılıyor; cüzdandan oda türetmenin temeli) |
-| `js/app.js` | Kamera, kare döngüsü, ölçüm paneli, ekran penceresi, düzenleme modu, katalog |
+| `js/app.js` | Kamera, kare döngüsü, ölçüm paneli, ekran penceresi, düzenleme modu, panel, marka + profil |
 
 **Oda verisi:** `{v, w, d, items:[{id,type,i,j,r,on?,mode?} | {id,type,wall:'i'|'j',a,z,text?}]}`. `on` = üstünde durduğu eşyanın id'si. Konumlar 0,5 karoya, duvar yüksekliği 0,25'e oturur. `localStorage['theroom.room.v1']` içinde saklanır; `?default` kayıtlı odayı yok sayar.
 
 **Oda boyutu:** Oda 12×12 başlar (`ROOM_SIZE`); açık kenarlardan `ROOM_STEP`=2 karo eklenerek `ROOM_MAX`=18'e kadar büyür (`room.w` i boyunca, `room.d` j boyunca). Motor `ROOM_W`/`ROOM_D` ile çizer, `setRoomSize()` önbellek sınırlarını yeniden hesaplar. Fiyat `js/game.js` → `expansionPrice()`; düzenleme modunda kenarlardaki "+" tutamaçları ve Mağaza sekmesindeki satırlar aynı önizlemeyi (nabız + yürüyen kesik çizgi) tetikler.
+
+**Arayüz:** Sol üstte marka: `paintLogo()` küçük bir odayı motorla çizer, yani logo baskı stiliyle birlikte değişir; yazı ve slogan `index.html` içinde (ürün adını değiştirmek için `<title>`, `h1` ve `#tagline`). Sağ üstte profil: `paintAvatar()` oyuncunun takma adından türeyen aynalı mürekkep ızgarası, yanında ad ve `◉ para · ⌂ oda puanı` (`refreshProfile()`). Oyuncu kimliği `save.player` + `playerTag()` (`js/game.js`); giriş gelene kadar `misafir #xxxx`. Geçici mesajlar alt ortadaki toast'a (`flash()`), kalıcı durum ise alt soldaki ipucu satırına (`showHint()`) gider. Panel sağda profilin altında, telefonda alttan açılan dikey bir sayfa.
 
 **Oda görünümü:** `room.look = {wall, floor, pattern, trim}` ve `room.style` (baskı stili) oda verisinin parçası; `drawShell()` bunlara göre çizer. Seçenekler ve fiyatlar `js/game.js` → `LOOK_OPTIONS`. Panelde "Oda" sekmesi: kilitli seçenek ilk tıkta 7 sn önizlenir (kaydedilmez), ikinci tıkta satın alınır; başka bir işlem önizlemeyi geri alır. Oyun modunda alt çubuktaki stil menüsü gizlidir (stil satın alınır), serbest modda açıktır.
 

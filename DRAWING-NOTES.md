@@ -48,12 +48,6 @@ Veri `data/<hash>.json` içinde, oyuncu başına bir dosya (`config.json` → `d
 
 **Derinlik:** Eşyalar ayak izlerine göre topolojik sıralanır (A, i ya da j boyunca B başlamadan bitiyorsa arkadadır). Canlı ekranın önünde bir şey duruyorsa o ekran için küçük bir siluet maskesi üretilir; içerik geçici bir tuvale çizilip maske oyulduktan sonra yerine konur.
 
-**Anasayfa:** `home.html` — **oda değil, salon.** Karşıdan (`view:'front'`) bakılan bir laboratuvar holü: derinlik arttıkça nesneler yukarı ve sağa kayar, boyları küçülmez (çizim mantığı, fotoğraf değil). `walls:false` + `floor:false` ile odanın kabuğu hiç çizilmez; zemin, arka duvar, tavan kanalları ve lambalar sayfanın kendi `hall()` fonksiyonundan gelir ve her kenardan taşacak kadar geniştir. Kamera salonun içinde başlar, sürükle/tekerlek/çift parmak ile gezilir.
-
-Kompozisyon öne bir `brainVat` (3×2,5×5,4 — kataloğun en büyük parçası) koyar; geri kalan her şey ölçekçe ondan küçüktür, böylece ekipman kalabalığının içinde bir özne kalır.
-
-Ölçüm (Chrome işlemci kısma): sürekli halde kare masaüstünde 1 ms, orta telefonda 5 ms, ucuz telefonda 10 ms (12 kare/sn, işlemci yükü ~%12). Açılıştan ilk kareye ucuz telefonda ~1,2 sn.
-
 **Modlar:** `/` = oyun (boş oda + başlangıç envanteri). `?sandbox` = serbest çizim tahtası: her eşya sınırsız, "Gece vardiyası" demo odası (`?default`, `?stress`, `?live` de bu moda girer). `?view=front` deneysel karşıdan projeksiyon.
 
 **URL parametreleri:** `sandbox`, `view`, `style`, sayısal stil alanları (`wobble`, `shift`, `patScale`, `soften`, `tw/th/tz`…), `edit`, `default`, `hud`, `stress=N`, `live=N`, `pan`, `legacy`.

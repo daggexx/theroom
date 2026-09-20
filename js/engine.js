@@ -34,6 +34,14 @@ const STYLES={
  gravur:{label:'Gravür',halftone:'line',patScale:.15,soften:.1,wobble:.3,outlineW:1.1,shift:.6,
   ink:{blue:'#3b2a20',coral:'#a5522f',sun:'#d9a441',teal:'#5c6b4a',paper:'#e9dcc0'},
   ang:{blue:35,coral:-35,sun:0,teal:80,paper:45},grain:['rgba(70,45,20,.06)','rgba(255,250,235,.25)']},
+ // Technical line drawing: flat greys, one hairline outline weight, no texture, and a single saturated accent.
+ teknik:{label:'Teknik çizim',
+  ink:{blue:'#525a67',coral:'#e5e8eb',sun:'#2f6bff',teal:'#f1f2f4',paper:'#ffffff'},
+  ang:{blue:0,coral:0,sun:0,teal:0,paper:0},
+  patScale:.2,soften:1,wear:0,shift:0,wobble:0,
+  outlineInk:'blue',outlineW:.85,outlineTone:1,
+  shade:[.09,.17],
+  grain:['rgba(90,100,120,.03)','rgba(255,255,255,.4)']},
  comic:{label:'Çizgi roman',patScale:.32,soften:0,wear:.3,shift:.5,wobble:.1,outlineW:2,outlineTone:1,shade:[.3,.55],
   ink:{blue:'#1b1b2f',coral:'#ff4b3a',sun:'#ffd000',teal:'#00a3d7',paper:'#fffdf5'}}
 };

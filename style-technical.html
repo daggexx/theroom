@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stil denemesi — teknik çizim</title>
+<style>
+:root{--paper:#f3ebdd;--ink:#344a80;--accent:#ee6852;--line:color-mix(in srgb,var(--ink) 25%,transparent)}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink)}
+canvas#stage{width:100%;height:100%;display:block;touch-action:none;cursor:grab}canvas#stage.drag{cursor:grabbing}
+header{position:fixed;left:28px;top:22px;max-width:330px;pointer-events:none}
+small{display:block;font:9px/1.5 monospace;letter-spacing:2.4px;text-transform:uppercase;opacity:.6}
+h1{margin:6px 0 8px;font:600 23px/1.15 Georgia,serif}h1 em{font-style:italic;color:var(--accent)}
+p{margin:0;font:11px/1.7 monospace;opacity:.75}
+#bar{position:fixed;left:28px;bottom:22px;right:28px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+button{border:1px solid var(--line);background:color-mix(in srgb,var(--paper) 80%,transparent);color:var(--ink);padding:8px 12px;font:11px monospace;border-radius:2px;cursor:pointer}
+button:hover{background:color-mix(in srgb,var(--paper) 86%,var(--ink))}button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+button:focus-visible{outline:2px solid var(--accent)}
+#bar span{flex:1;text-align:right;font:10px monospace;opacity:.6}
+@media(max-width:700px){header{left:16px;top:14px;max-width:60vw}p{display:none}#bar{left:14px;right:14px;bottom:14px}}
+</style>
+<canvas id="stage" aria-label="Aynı oda, teknik çizim stilinde"></canvas>
+<header><small>Stil denemesi</small><h1>Teknik <em>çizim</em></h1>
+<p id="note"></p></header>
+<div id="bar"></div>
+<script src="js/engine.js"></script>
+<script src="js/items.js"></script>
+<script src="js/items-desk.js"></script>
+<script src="js/items-crypto.js"></script>
+<script src="js/items-lab.js"></script>
+<script src="js/items-office.js"></script>
+<script src="js/room.js"></script>
+<script>
+'use strict';
+// A trial page, not part of the game: the same office drawn in the technical line style next to the riso one.
+// The style itself lives in engine.js (STYLES.teknik); everything below only chooses which preset to show.
+
+const SHOWROOM={v:1,w:14,d:14,look:{wall:'paper',floor:'light',pattern:'tiles',trim:'blue'},items:[
+ // trading desk
+ {id:'main',type:'deskL',i:4.5,j:1,r:0},{type:'monitorWall',on:'main',i:4.5,j:1,r:0,mode:'map'},
+ {type:'mechKeyboard',on:'main',i:5,j:2.5,r:0},{type:'mug',on:'main',i:6.5,j:2.5,r:0},{type:'micArm',on:'main',i:4.5,j:2.5,r:0},
+ {type:'gamingChair',i:5.5,j:4.5,r:0},
+ {id:'side',type:'standingDesk',i:8.5,j:1,r:0},{type:'ultrawide',on:'side',i:8.5,j:1,r:0,mode:'wave'},{type:'laptop',on:'side',i:10.5,j:1.6,r:0,mode:'code'},
+ // machine row
+ {type:'asicRack',i:12,j:1,r:0},{type:'immersionTank',i:12,j:3.5,r:1},{type:'miningRig',i:12.5,j:6,r:1},
+ {type:'halfRack',i:12,j:8,r:1},{type:'ups',i:12.5,j:10,r:1},
+ // workshop
+ {type:'printer3d',i:.5,j:5.5,r:0},{id:'bench',type:'workbench',i:1.5,j:7,r:0},{type:'oscilloscope',on:'bench',i:1.5,j:7,r:0,mode:'wave'},
+ {type:'solderStation',on:'bench',i:3,j:7.5,r:0},{type:'partsDrawers',i:.5,j:9,r:0},{type:'robotArm',i:2,j:9.5,r:0},
+ // showpieces and lounge
+ {type:'goldBitcoin',i:7.5,j:6.5,r:0},{type:'quantumComputer',i:9.5,j:8.5,r:0},
+ {id:'meet',type:'meetingTable',i:4,j:10.5,r:0},{type:'papers',on:'meet',i:5,j:11,r:0},
+ {type:'plantLarge',i:.5,j:12.5,r:0},{type:'plantLarge',i:8,j:12.5,r:0},{type:'waterCooler',i:7.5,j:10.5,r:0},
+ {type:'rugRound',i:6,j:6,r:0},
+ // walls
+ {type:'chartBoard',wall:'i',a:1,z:1.5},{type:'ticker',wall:'i',a:4.5,z:2.6},{type:'orderBook',wall:'i',a:9,z:.75},
+ {type:'worldClocks',wall:'j',a:.5,z:1.75},{type:'whiteboard',wall:'j',a:4,z:.9},{type:'window',wall:'j',a:8,z:1.25,variant:2},
+ {type:'blockHeight',wall:'j',a:10.5,z:2.3}
+]};
+
+// Each preset is the base style plus a couple of overrides applied after setStyle.
+const TRIALS=[
+ {id:'teknik',name:'Teknik',note:'Düz gri dolgular, tek ağırlıkta ince kontur, tram yok. Vurgu rengi yalnızca ekranlarda ve ışıklarda.'},
+ {id:'mono',base:'teknik',name:'Renksiz',ink:{sun:'#7b8492'},note:'Aynı stil, vurgu rengi de griye çekildi. Tamamen tek renk teknik çizim.'},
+ {id:'ince',base:'teknik',name:'İnce kontur',set:{outlineW:.55,shade:[.06,.12]},note:'Daha ince kontur ve daha yumuşak gölge: referanstaki uzak binalara yakın, hafif bir görünüm.'},
+ {id:'kalin',base:'teknik',name:'Kalın kontur',set:{outlineW:1.35,shade:[.12,.22]},ink:{blue:'#3c434e'},note:'Daha kalın ve koyu kontur, daha belirgin gölge: yakın plan ve küçük boyutta daha okunaklı.'},
+ {id:'riso',name:'Riso (karşılaştır)',note:'Projenin mevcut stili. Aradaki farkı görmek için.'}
+];
+let trial=TRIALS[0];
+
+function applyTrial(t){setStyle(t.base||t.id);
+ if(t.set)Object.assign(S,t.set);
+ // a fresh palette object, so an override never leaks back into STYLES
+ if(t.ink){INK=S.ink={...S.ink,...t.ink};patternCache=new WeakMap()}
+ document.getElementById('note').textContent=t.note;
+ for(const b of document.querySelectorAll('#bar button'))b.setAttribute('aria-pressed',String(b.dataset.id===t.id));
+ makePaper();build();fit();paint()}
+
+// ---- painting ----------------------------------------------------------------
+const base=document.createElement('canvas'),paper=document.createElement('canvas'),SCALE=2;
+let width=0,height=0,dpr=1,zoom=1,pan={x:0,y:0},time=0;
+function makePaper(){paper.width=paper.height=600;const g=paper.getContext('2d'),r=rng(43);g.fillStyle=INK.paper;g.fillRect(0,0,600,600);
+ for(let n=0;n<10000;n++){g.fillStyle=S.grain[n%3?0:1];g.fillRect(r()*600,r()*600,r()*1.5+.4,r()*1+.3)}}
+function build(){loadRoom(SHOWROOM);base.width=B.w*SCALE;base.height=B.h*SCALE;c=base.getContext('2d');
+ c.setTransform(SCALE,0,0,SCALE,-B.x*SCALE,-B.y*SCALE);buildRoom();c=ctx;buildMasks(SCALE)}
+function fit(){zoom=Math.max(.2,Math.min((width-60)/B.w,(height-210)/B.h));pan={x:0,y:0}}
+function resize(){width=innerWidth;height=innerHeight;dpr=Math.min(2,devicePixelRatio||1);canvas.width=width*dpr;canvas.height=height*dpr;fit();paint()}
+function paint(){c=ctx;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=ctx.createPattern(paper,'repeat');ctx.fillRect(0,0,width,height);
+ ctx.translate(width/2+pan.x,height/2+pan.y+18);ctx.scale(zoom,zoom);ctx.translate(-VIEW_CX,-VIEW_CY);
+ if(S.blend!=='screen')shade([p(0,0,-.55),p(ROOM_W+.3,0,-.55),p(ROOM_W+.3,ROOM_D+.3,-.55),p(0,ROOM_D+.3,-.55)],.06);
+ ctx.drawImage(base,B.x,B.y,B.w,B.h);
+ fast=true;for(const s of screens)drawDisplay(s,time);
+ for(const it of liveItems){const def=ITEMS[it.type];def.live(def.kind==='wall'?wallFrame(it,def):frame(it,def,floorZ(it)),it,time)}fast=false}
+let last=0,paintAt=0;
+function loop(now){requestAnimationFrame(loop);if(last)time+=Math.min(.1,(now-last)/1000);last=now;if(now-paintAt>83){paint();paintAt=now}}
+
+// ---- input --------------------------------------------------------------------
+let dragging=null;
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);dragging=[e.clientX,e.clientY];canvas.classList.add('drag')});
+canvas.addEventListener('pointermove',e=>{if(!dragging)return;pan.x+=e.clientX-dragging[0];pan.y+=e.clientY-dragging[1];dragging=[e.clientX,e.clientY]});
+for(const type of['pointerup','pointercancel'])canvas.addEventListener(type,()=>{dragging=null;canvas.classList.remove('drag')});
+canvas.addEventListener('wheel',e=>{e.preventDefault();const old=zoom;zoom=Math.max(.2,Math.min(4,zoom*Math.exp(-e.deltaY*.001)));const k=zoom/old;
+ pan.x=e.clientX-width/2-(e.clientX-width/2-pan.x)*k;pan.y=e.clientY-height/2-18-(e.clientY-height/2-18-pan.y)*k},{passive:false});
+addEventListener('keydown',e=>{const n=TRIALS.findIndex(t=>t.id===trial.id);
+ if(e.key==='ArrowRight'){trial=TRIALS[(n+1)%TRIALS.length];applyTrial(trial)}
+ if(e.key==='ArrowLeft'){trial=TRIALS[(n+TRIALS.length-1)%TRIALS.length];applyTrial(trial)}
+ if(e.key==='0'){fit();paint()}});
+addEventListener('resize',resize);
+
+{const bar=document.getElementById('bar');
+ for(const t of TRIALS){const b=document.createElement('button');b.textContent=t.name;b.dataset.id=t.id;b.onclick=()=>{trial=t;applyTrial(t)};bar.appendChild(b)}
+ const hint=document.createElement('span');hint.textContent='Sürükle · Yakınlaş · ← → stil · 0 ortala';bar.appendChild(hint)}
+width=innerWidth;height=innerHeight;dpr=Math.min(2,devicePixelRatio||1);canvas.width=width*dpr;canvas.height=height*dpr;
+applyTrial(trial);requestAnimationFrame(loop);
+</script>
+</html>

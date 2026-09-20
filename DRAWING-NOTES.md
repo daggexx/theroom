@@ -27,6 +27,7 @@ Veri `data/<hash>.json` içinde, oyuncu başına bir dosya (`config.json` → `d
 | `js/items-crypto.js` | Kripto donanımı: madenciler, raflar, ağ, enerji, soğuk cüzdan |
 | `js/items-lab.js` | Atölye/laboratuvar + nadir vitrin parçaları |
 | `js/items-office.js` | Dinlenme, mutfak köşesi, süs ve tüm duvar eşyaları |
+| `js/items-brain.js` | Ajan laboratuvarı: beyin tankı ve kapsülü, pompa, boru hattı, vana, sinyal direği, ışık köprüsü, soğutucu, numune rafı. Yuvarlak gövdeler `hull()` + `disc()` ile çiziliyor |
 | `js/room.js` | Oda verisi (JSON), yerleşim kuralları `placementOk`, boyama sırası `farToNear`, önbellek + ekran maskeleri |
 | `js/rules.js` | **Oyunun kuralları, tek yerde.** Fiyatlar, setler, görevler, günlük ödül, fırsatlar, görünüm fiyatları, genişleme fiyatı, yerleşim geometrisi ve `apply(state,cmd,ctx)` komut geçişi. Hem tarayıcıda script olarak hem sunucuda `require` ile çalışır |
 | `js/game.js` | Kuralların üstünde ince bir uyarlayıcı: komutu önce yerelde uygular (arayüz beklemesin), sonra `queueCommand` ile sunucuya yollar. Kayıt: `localStorage['theroom.save.v1']`, oda: `theroom.game.room.v1` |
@@ -46,6 +47,10 @@ Veri `data/<hash>.json` içinde, oyuncu başına bir dosya (`config.json` → `d
 **Yeni eşya eklemek:** `ITEMS`'e bir kayıt: `kind` (`floor`/`rug`/`wall`), `w,d,h`, isteğe bağlı `top` (üstüne eşya konabilir), `canStack` (üste konabilir), `modes` (ekranı var), `draw(L,item)`, isteğe bağlı `live(L,item,t)`, `variants: n` (M ile değişen görünüm, `item.variant`), `onFloor` (yerden başlayan duvar eşyası). Duvardan odaya taşan parçalar için `wallFrameOut(it,def)` → `Q(across,up,out)`. Fiyatı `js/game.js` → `PRICES`'a eklemeyi unutma. Çizimde `L.box`, `L.boxes` (uzaktan yakına sıralı), `L.tile`, `L.p`, `L.panel(yüz,…)` + `L.sees(yüz)` kullanılır; yalnızca +i ve +j'ye bakan yüzler görünür.
 
 **Derinlik:** Eşyalar ayak izlerine göre topolojik sıralanır (A, i ya da j boyunca B başlamadan bitiyorsa arkadadır). Canlı ekranın önünde bir şey duruyorsa o ekran için küçük bir siluet maskesi üretilir; içerik geçici bir tuvale çizilip maske oyulduktan sonra yerine konur.
+
+**Anasayfa:** `home.html` — duvarsız açık platformda bir ajan laboratuvarı, tam ekran, fareyle gezilebilir (sürükle, tekerlek, çift parmak). Sahne bir kez önbelleğe alınıyor; kare başına yalnızca tanklar, pompa, borular ve ekranlar çiziliyor. Kare hızı cihaza göre kendini ayarlıyor: boyama süresi bütçenin üçte birini aşarsa aralık uzatılıyor. Oda `walls:false` ile duvarsız çiziliyor.
+
+Ölçüm (Chrome işlemci kısma): sürekli halde kare masaüstünde 1 ms, orta telefonda 5 ms, ucuz telefonda 10 ms (12 kare/sn, işlemci yükü ~%12). Açılıştan ilk kareye ucuz telefonda ~1,2 sn.
 
 **Modlar:** `/` = oyun (boş oda + başlangıç envanteri). `?sandbox` = serbest çizim tahtası: her eşya sınırsız, "Gece vardiyası" demo odası (`?default`, `?stress`, `?live` de bu moda girer). `?view=front` deneysel karşıdan projeksiyon.
 

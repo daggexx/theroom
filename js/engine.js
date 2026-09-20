@@ -72,6 +72,14 @@ function pointInPolygon(q,x,y){let inside=false;for(let i=0,j=q.length-1;i<q.len
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const ellipse=(x,y,rx,ry,n=32)=>Array.from({length:n},(_,k)=>[x+Math.cos(k/n*TAU)*rx,y+Math.sin(k/n*TAU)*ry]);
 const rect=(x,y,w,h)=>[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
+// The outline of a round body: the hull of the rings at its two ends. A cylinder's silhouette is convex,
+// so this gives the exact shape whatever the projection does to the circle.
+function hull(points){const p=points.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+ const side=list=>{const out=[];for(const q of list){while(out.length>1){const[a,b]=out.slice(-2);
+   if((b[0]-a[0])*(q[1]-a[1])-(b[1]-a[1])*(q[0]-a[0])<=0)out.pop();else break}out.push(q)}return out};
+ const lower=side(p),upper=side(p.slice().reverse());
+ return lower.slice(0,-1).concat(upper.slice(0,-1))}
+
 // Shapes on a panel: P maps (0..1 across, 0..1 up) to the picture, so circles come out correctly skewed.
 const quad=(P,x,y,w,h)=>[P(x,y),P(x+w,y),P(x+w,y+h),P(x,y+h)];
 const ring=(P,cx,cy,rx,ry,n=24)=>Array.from({length:n},(_,k)=>P(cx+Math.cos(k/n*TAU)*rx,cy+Math.sin(k/n*TAU)*ry));

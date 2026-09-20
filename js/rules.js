@@ -19,7 +19,9 @@ const PRICES={deskLarge:400,deskMedium:250,deskLow:180,monitor:300,terminal:350,
  laserCutter:1900,partsDrawers:260,serverCart:420,quantumComputer:5000,teslaCoil:1600,robotDog:2200,hologram:2600,lamboModel:1400,moonRock:900,
  meetingTable:900,phoneBooth:1600,lockers:420,waterCooler:200,miniFridge:380,vendingMachine:1400,arcade:1700,foosball:1300,roomba:420,hydroRack:850,
  projector:380,projectorScreen:420,ticker:1500,orderBook:600,blockHeight:700,halvingClock:500,worldClocks:400,whiteboard:340,whitepaper:600,
- securityCam:280,cardReader:220,ledStrip:200,plaques:450,vent:90};
+ securityCam:280,cardReader:220,ledStrip:200,plaques:450,vent:90,
+ // agent lab
+ brainTank:4200,brainPod:1500,pumpUnit:900,pipeRun:150,valveStack:340,signalMast:1900,gantry:1100,coolantTank:700,specimenShelf:620};
 const priceOf=type=>PRICES[type]??100;
 const rarityOf=type=>priceOf(type)>=800?'epic':priceOf(type)>=340?'rare':'common';
 const RARITY_NAME={common:'sıradan',rare:'nadir',epic:'efsane'};

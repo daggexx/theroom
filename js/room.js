@@ -94,6 +94,7 @@ function drawShell(){const W=ROOM_W,D=ROOM_D,look=lookOf(),floor=tile(0,0,W,D),l
  else if(look.pattern==='tiles'){for(let a=0;a<=W;a+=2)line([p(a,0),p(a,D)],'blue',1.3,faint);for(let b=0;b<=D;b+=2)line([p(0,b),p(W,b)],'blue',1.3,faint);for(let a=0;a<W;a+=2)for(let b=0;b<D;b+=2)if((a+b)%4===0)shade(tile(a+.06,b+.06,Math.min(2,W-a)-.12,Math.min(2,D-b)-.12),.05)}
  else{const tone=look.pattern==='plain'?faint*.5:faint;for(let a=0;a<=W;a++)line([p(a,0),p(a,D)],'blue',.65,tone);for(let b=0;b<=D;b++)line([p(0,b),p(W,b)],'blue',.65,tone);
   if(look.pattern==='checker')for(let a=0;a<W;a++)for(let b=0;b<D;b++)if((a+b)%2===0)shade(tile(a+.035,b+.035,.93,.93),light?.08:.06)}
+ if(room.walls===false)return;                  // an open platform, for the landing page
  const left=faceJ(0,0,D,0,WALL_H),right=faceI(0,0,W,0,WALL_H);
  if(look.wall==='paper'){shape(left,'paper',1);shade(left,.14);shape(right,'paper',1);shade(right,.06)}
  else{const tones=WALL_TONES[look.wall]||WALL_TONES.blue;shape(left,look.wall,tones[0]);if(look.wall==='blue')fill(left,'teal',.24,false);else shade(left,.1);shape(right,look.wall,tones[1])}

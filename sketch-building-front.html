@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eskiz — karşıdan bina</title>
+<style>
+:root{--paper:#f3ebdd;--ink:#344a80;--accent:#ee6852;--frame:#344a80}
+html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+header{position:fixed;left:32px;top:26px;pointer-events:none}small{font:10px/1.5 monospace;letter-spacing:3px;text-transform:uppercase;opacity:.6}h1{font:italic 25px Georgia,serif;margin:7px 0}
+p{font:11px/1.6 monospace;max-width:250px;opacity:.75;margin:0}
+</style>
+<canvas id="stage"></canvas>
+<header><small>Eskiz / karşıdan görünüm</small><h1>Apartman</h1><p>Aynı oda verisi, karşıdan projeksiyonla. ?floors=6&amp;cols=3 ile oynanabilir.</p></header>
+<script src="js/engine.js"></script>
+<script src="js/items.js"></script>
+<script src="js/items-home.js"></script>
+<script src="js/room.js"></script>
+<script src="js/generate.js"></script>
+<script>
+'use strict';
+// Throwaway sketch: a building seen from straight ahead, one furnished flat per cell. Not part of the app.
+STYLES.riso.view='front'; // every style inherits the projection from here
+const FLOORS=Math.max(1,Math.min(9,parseInt(QUERY.get('floors'))||5)),COLS=Math.max(1,Math.min(6,parseInt(QUERY.get('cols'))||4)),RES=1.5;
+const NAMES=['0x7a…3f','mert.sol','0x19…c4','ayse.sol','0xb2…07','deniz.sol','0x4e…91','kaan.sol','0xd0…5a','0x88…12','elif.sol','0x3c…e7','can.sol','0xf1…66','0x05…bd','ece.sol','0x61…aa','bora.sol','0x9e…30','selin.sol','0x2b…f8','0xc7…19','umut.sol','0x50…d2'];
+function flatPicture(seed,amount,style){setStyle(style);generateRoom(seed,amount);const cv=document.createElement('canvas');cv.width=B.w*RES;cv.height=B.h*RES;
+ c=cv.getContext('2d');c.setTransform(RES,0,0,RES,-B.x*RES,-B.y*RES);buildRoom();for(const s of screens)drawDisplay(s,3+seed%7);
+ for(const it of liveItems){const def=ITEMS[it.type];def.live(frame(it,def,floorZ(it)),it,1)}c=ctx;return cv}
+const flats=[],total=FLOORS*COLS,filled=Math.round(total*.8),ME=COLS+1;
+for(let n=0;n<total;n++){const f=Math.floor(n/COLS),k=n%COLS,amount=n>=filled?0:n>=filled-2?.2:n===ME?.95:.35+((n*37)%60)/100,style=n%5===2?'night':n%7===4?'gravur':'riso';
+ flats.push({f,k,amount,me:n===ME,name:NAMES[n%NAMES.length],score:Math.round(amount*amount*900)*10,picture:flatPicture(1000+n*17,amount,style)})}
+setStyle('riso');
+
+function paint(){const dpr=Math.min(2,devicePixelRatio||1),W=innerWidth,H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;
+ const N=ROOM_SIZE,skew=N*S.fdx,roomW=N*S.fw,pitchX=roomW+skew+30,top=-(WALL_H+.45)*S.fz,bottom=N*S.fdy+.8*S.fz,pitchY=bottom-top+26;
+ const left=-skew-46,right=(COLS-1)*pitchX+roomW+46,roof=top-(FLOORS-1)*pitchY-40,ground=bottom+34;
+ const k=Math.min((W-330)/(right-left),(H-70)/(ground-roof+150));
+ c=ctx;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=INK.paper;ctx.fillRect(0,0,W,H);
+ ctx.setTransform(dpr*k,0,0,dpr*k,dpr*(W/2+130-k*(left+right)/2),dpr*(H-30-k*ground));
+ // the building itself: body, roof, things on the roof, ground
+ shape(rect(left,roof,right-left,ground-roof),'blue',.42,2);
+ for(let f=0;f<FLOORS;f++)fill(rect(left,top-f*pitchY-14,right-left,8),'blue',.3,false);
+ shape(rect(left-22,roof-30,right-left+44,30),'coral',.6,2);shade(rect(left-22,roof-10,right-left+44,10),.25);
+ shape(rect(left+80,roof-104,150,74),'teal',.55,1.6);lines([0,1,2].map(n=>[[left+100+n*45,roof-104],[left+100+n*45,roof-30]]),'blue',1,.5); // water tank
+ line([[right-200,roof-30],[right-200,roof-170]],'blue',3);lines([[[right-240,roof-150],[right-160,roof-150]],[[right-225,roof-125],[right-175,roof-125]]],'blue',2);dot(right-200,roof-172,5,'coral'); // antenna
+ shape(rect(left-120,ground,right-left+240,16),'blue',.75,1.5);
+ for(const flat of flats){const x=flat.k*pitchX,y=-flat.f*pitchY;
+  fill(rect(x-skew-14,y+top-6,roomW+skew+28,bottom-top+12),'paper',1); // the opening in the facade
+  ctx.drawImage(flat.picture,x+B.x,y+B.y,B.w,B.h);
+  if(flat.amount<=0){shade(rect(x-skew-14,y+top-6,roomW+skew+28,bottom-top+12),.5);shape(rect(x+roomW/2-150,y-70,230,64),'paper',1,1.6);ctx.fillStyle=INK.coral;ctx.font='bold 30px monospace';ctx.textAlign='center';ctx.fillText('KİRALIK',x+roomW/2-35,y-40);ctx.font='15px monospace';ctx.fillStyle=INK.blue;ctx.fillText('davet et  +',x+roomW/2-35,y-18)}
+  if(flat.me){ctx.save();ctx.strokeStyle=INK.sun;ctx.lineWidth=6;ctx.setLineDash([16,10]);ctx.strokeRect(x-skew-16,y+top-8,roomW+skew+32,bottom-top+16);ctx.restore()}
+  // name plate on the slab
+  if(flat.amount>0){ctx.textAlign='left';ctx.font='17px monospace';const text=`${flat.me?'SEN · ':''}${flat.name} · ${flat.score}`,w=ctx.measureText(text).width+20;fill(rect(x-skew-6,y+bottom-4,w,24),flat.me?'sun':'paper',1);ctx.fillStyle=INK.blue;ctx.fillText(text,x-skew+4,y+bottom+14)}}
+ ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=INK.blue;ctx.textAlign='left';ctx.font='italic 22px Georgia,serif';ctx.fillText('0x7a…3f binası',32,H-92);ctx.font='12px/1.6 monospace';
+ ctx.fillText(`bina puanı ${flats.reduce((a,b)=>a+b.score,0)}`,32,H-68);ctx.fillText(`${flats.filter(x=>x.amount>0).length}/${flats.length} daire dolu`,32,H-50);ctx.fillText(`sıradaki kat: ${COLS} davet daha`,32,H-32)}
+addEventListener('resize',paint);paint();
+</script>
+</html>

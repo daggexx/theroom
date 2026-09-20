@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eskiz — katları açılmış bina</title>
+<style>
+:root{--paper:#f3ebdd;--ink:#344a80;--accent:#ee6852;--frame:#344a80}
+html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+header{position:fixed;left:32px;top:26px;pointer-events:none}small{font:10px/1.5 monospace;letter-spacing:3px;text-transform:uppercase;opacity:.6}h1{font:italic 25px Georgia,serif;margin:7px 0}
+p{font:11px/1.6 monospace;max-width:300px;opacity:.75;margin:0}
+</style>
+<canvas id="stage"></canvas>
+<header><small>Eskiz / seçenek 3</small><h1>Katları açılmış bina</h1><p>Her kat iki daire. Odalar sahte: bir sayıdan rastgele döşeniyor. ?floors=5&amp;gap=300 ile oynanabilir.</p></header>
+<script src="js/engine.js"></script>
+<script src="js/items.js"></script>
+<script src="js/items-home.js"></script>
+<script src="js/room.js"></script>
+<script src="js/generate.js"></script>
+<script>
+'use strict';
+// Throwaway sketch: not part of the app. Furnishes fake rooms from a seed and stacks the floors with air in between.
+const FLOORS=Math.max(1,Math.min(8,parseInt(QUERY.get('floors'))||4)),GAP=parseInt(QUERY.get('gap'))||310,PER_FLOOR=2,PITCH=13,RES=1.5;
+
+// One flat: furnish, paint into its own picture, freeze the screens at one moment.
+function flatPicture(seed,amount,style){setStyle(style);generateRoom(seed,amount);const cv=document.createElement('canvas');cv.width=B.w*RES;cv.height=B.h*RES;
+ c=cv.getContext('2d');c.setTransform(RES,0,0,RES,-B.x*RES,-B.y*RES);buildRoom();for(const s of screens)drawDisplay(s,3+seed%7);
+ for(const it of liveItems){const def=ITEMS[it.type];def.live(frame(it,def,floorZ(it)),it,1)}c=ctx;return cv}
+
+const NAMES=['0x7a…3f','mert.sol','0x19…c4','ayse.sol','0xb2…07','deniz.sol','0x4e…91','kaan.sol','0xd0…5a','0x88…12','elif.sol','0x3c…e7','can.sol','0xf1…66','0x05…bd','ece.sol'];
+const flats=[];
+for(let f=0;f<FLOORS;f++)for(let k=0;k<PER_FLOOR;k++){const n=f*PER_FLOOR+k,top=f===FLOORS-1,amount=top&&k===1?0:top?.2:.35+((n*37)%60)/100,style=n%5===2?'night':n%7===4?'gravur':'riso';
+ flats.push({f,k,amount,me:f===1&&k===1,name:NAMES[n%NAMES.length],score:Math.round(amount*amount*9000/10)*10,picture:flatPicture(1000+n*17,f===1&&k===1?.95:amount,style)})}
+setStyle('riso');
+
+function paint(){const dpr=Math.min(2,devicePixelRatio||1),W=innerWidth,H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;
+ const spanX=(PER_FLOOR*PITCH+1)*S.tw,floorH=B.h+(PER_FLOOR-1)*PITCH*S.th,totalH=floorH+(FLOORS-1)*GAP,totalW=B.w+(PER_FLOOR-1)*PITCH*S.tw+260;
+ const k=Math.min((W-40)/totalW,(H-40)/totalH);
+ c=ctx;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=INK.paper;ctx.fillRect(0,0,W,H);
+ // world origin = floor 0, flat 0, room corner (0,0,0)
+ const ox=W/2-k*((PER_FLOOR-1)*PITCH*S.tw/2)+k*90,oy=H-20-k*(floorH+B.y)-0;
+ for(let f=0;f<FLOORS;f++){const lift=-f*GAP;ctx.setTransform(dpr*k,0,0,dpr*k,dpr*ox,dpr*(oy+k*lift));
+  const span=PER_FLOOR*PITCH-.4;
+  // structure: slab under the flats, corner posts down to the floor below
+  if(f>0)for(const[i,j]of[[-.6,12.6],[span,-.6],[span,12.6]]){const a=p(i,j,-.75);line([a,[a[0],a[1]+GAP]],'blue',2.2,.55)}
+  box(-.6,-.6,span+.6,13.2,-.75,.35,'blue',.78);
+  for(const flat of flats.filter(x=>x.f===f)){const q=p(flat.k*PITCH,0);ctx.drawImage(flat.picture,q[0]+B.x,q[1]+B.y,B.w,B.h);
+   if(flat.me){ctx.save();path(silhouette(flat.k*PITCH-.15,-.15,12.3,12.3,-.4,WALL_H+.55));ctx.strokeStyle=INK.sun;ctx.lineWidth=3;ctx.setLineDash([9,6]);ctx.stroke();ctx.restore()}}
+  // captions to the left of the floor
+  const tag=p(-.6,12.6,1.2);ctx.fillStyle=INK.blue;ctx.textAlign='right';ctx.font='italic 30px Georgia,serif';ctx.fillText(`${f+1}. kat`,tag[0]-26,tag[1]);
+  ctx.font='15px monospace';flats.filter(x=>x.f===f).forEach((flat,n)=>ctx.fillText(flat.amount<=0?'kiralık — davet et':`${flat.me?'SEN · ':''}${flat.name} · ${flat.score} puan`,tag[0]-26,tag[1]+26+n*21));ctx.textAlign='left'}
+ ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=INK.blue;ctx.font='12px monospace';ctx.textAlign='right';
+ ctx.fillText(`bina puanı ${flats.reduce((a,b)=>a+b.score,0)} · ${flats.filter(x=>x.amount>0).length}/${flats.length} daire dolu`,W-32,H-24);ctx.textAlign='left'}
+addEventListener('resize',paint);paint();
+</script>
+</html>

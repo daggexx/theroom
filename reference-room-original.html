@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gece vardiyası — bilgisayar odası</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#f3ebdd;color:#344a80}canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}canvas.drag{cursor:grabbing}header{position:fixed;left:32px;top:26px;pointer-events:none}small{font:10px/1.5 monospace;letter-spacing:3px;text-transform:uppercase;opacity:.6}h1{font:italic 25px Georgia,serif;margin:7px 0}footer{position:fixed;bottom:22px;left:32px;right:32px;display:flex;justify-content:space-between;align-items:center;font:11px monospace;color:#344a80aa}button{border:1px solid #344a8040;background:#f3ebddcc;color:#344a80;padding:8px 12px;font:11px monospace;cursor:pointer;border-radius:2px}button:hover{background:#fff8ec}button:focus-visible{outline:2px solid #ee6852}@media(max-width:600px){header{left:20px;top:18px}h1{font-size:21px}footer{left:20px;right:20px;bottom:16px}footer span{max-width:170px;font-size:10px}}
+</style>
+<canvas id="stage" aria-label="Risograf baskı tarzında, monitörler, televizyonlar ve sunucularla dolu izometrik bilgisayar odası"></canvas>
+<header><small>Oda çalışması / 01</small><h1>Gece vardiyası</h1></header>
+<footer><span>Sürükle · Yakınlaş · Ekranları keşfet</span><div><button id="motion" aria-pressed="false">Hareketi durdur</button> <button id="reset">Ortala ↗</button></div></footer>
+<script>
+'use strict';
+// Same 64×32 isometric grid, 32px vertical units and four-ink palette as the reference.
+const canvas=document.getElementById('stage'),ctx=canvas.getContext('2d',{alpha:false});
+const TAU=Math.PI*2,INK={blue:'#344a80',coral:'#ee6852',sun:'#ffd428',teal:'#008c8a',paper:'#f3ebdd'};
+const ANG={blue:15,coral:75,sun:0,teal:45,paper:45},SHIFT={blue:[.55,-.3],coral:[-.6,.45],sun:[.35,.75],teal:[-.45,-.55],paper:[0,0]};
+const p=(i,j,z=0)=>[(i-j)*32,(i+j)*16-z*32];
+const tile=(i,j,w,d,z=0)=>[p(i,j,z),p(i+w,j,z),p(i+w,j+d,z),p(i,j+d,z)];
+const faceI=(i,j,w,z,h)=>[p(i,j,z),p(i+w,j,z),p(i+w,j,z+h),p(i,j,z+h)];
+const faceJ=(i,j,d,z,h)=>[p(i,j,z),p(i,j+d,z),p(i,j+d,z+h),p(i,j,z+h)];
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R=rng(4238),rand=(a,b)=>a+R()*(b-a),ellipse=(x,y,rx,ry,n=32)=>Array.from({length:n},(_,k)=>[x+Math.cos(k/n*TAU)*rx,y+Math.sin(k/n*TAU)*ry]);
+const rect=(x,y,w,h)=>[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
+const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+let c=ctx;const patternCache=new WeakMap();
+function pattern(ink,tone){let bank=patternCache.get(c);if(!bank){bank=new Map();patternCache.set(c,bank)}const level=Math.max(1,Math.min(20,Math.round(tone*20))),key=ink+level;if(bank.has(key))return bank.get(key);
+ const cv=document.createElement('canvas');cv.width=cv.height=124;const g=cv.getContext('2d'),r=rng(129+level*97+ink.charCodeAt(0)),cell=15.5,t=level/20;
+ g.fillStyle=INK[ink];if(t>.5){g.fillRect(0,0,124,124);g.globalCompositeOperation='destination-out'}
+ if(t<1)for(let y=0;y<=8;y++)for(let x=0;x<=8;x++){g.beginPath();const rad=cell*Math.sqrt((t>.5?1-t:t)/Math.PI)*(.86+r()*.24);g.arc((x+(t>.5?0:.5))*cell,(y+(t>.5?0:.5))*cell,rad,0,TAU);g.fill()}
+ g.globalCompositeOperation='destination-out';for(let k=0;k<105;k++){g.globalAlpha=.25+r()*.6;g.fillRect(r()*124,r()*124,.7+r()*1.4,.7+r()*1.4)}
+ const out=c.createPattern(cv,'repeat');out.setTransform(new DOMMatrix().rotateSelf(ANG[ink]).scaleSelf(.2));bank.set(key,out);return out;
+}
+function path(q,dx=0,dy=0){c.beginPath();q.forEach((a,k)=>k?c.lineTo(a[0]+dx,a[1]+dy):c.moveTo(a[0]+dx,a[1]+dy));c.closePath()}
+function fill(q,ink='paper',tone=1,knock=true){if(!q.length)return;if(knock){path(q);c.fillStyle=INK.paper;c.fill()}if(tone<=0)return;const [dx,dy]=SHIFT[ink];path(q,dx,dy);c.fillStyle=pattern(ink,tone);c.globalCompositeOperation=ink==='paper'?'source-over':'multiply';c.fill();c.globalCompositeOperation='source-over'}
+function line(q,ink='blue',w=1,tone=1,closed=false){c.beginPath();const [dx,dy]=SHIFT[ink];for(let k=0;k<q.length;k++){const a=q[k];if(!k)c.moveTo(a[0]+dx,a[1]+dy);else{const b=q[k-1],n=Math.max(1,Math.ceil(Math.hypot(a[0]-b[0],a[1]-b[1])/5));for(let z=1;z<=n;z++){const f=z/n,off=Math.sin(f*Math.PI)*Math.sin(k*4.1+f*7)*.25;c.lineTo(b[0]+(a[0]-b[0])*f+off+dx,b[1]+(a[1]-b[1])*f+off+dy)}}}if(closed)c.closePath();c.strokeStyle=pattern(ink,tone);c.lineWidth=w;c.lineJoin=c.lineCap='round';c.globalCompositeOperation=ink==='paper'?'source-over':'multiply';c.stroke();c.globalCompositeOperation='source-over'}
+function shape(q,ink,tone=1,w=.9){fill(q,ink,tone);line(q,'blue',w,.9,true)}
+function clip(q,fn){c.save();path(q);c.clip();fn();c.restore()}
+function dot(x,y,r,ink='sun',tone=1){fill(ellipse(x,y,r,r,10),ink,tone)}
+function glow(x,y,rx,ry,ink='sun',power=.35){for(let k=7;k>0;k--)fill(ellipse(x,y,rx*k/7,ry*k/7),ink,power*(1-k/8),false)}
+function box(i,j,w,d,z,h,ink='coral',tone=.6){const top=tile(i,j,w,d,z+h),a=faceI(i,j+d,w,z,h),b=faceJ(i+w,j,d,z,h);shape(a,ink,tone);fill(a,'blue',.18,false);shape(b,ink,tone);fill(b,'blue',.38,false);shape(top,ink,tone*.85);return top}
+function cable(q,ink='blue',w=1.7){line(q,'paper',w+1,.6);line(q,ink,w,.9)}
+const screens=[];let serial=0;
+function screen(side,start,offset,z,w,h,mode='code',bezel='blue',tone=.88){
+ const P=(u,v)=>side==='i'?p(start+u*w,offset,z+v*h):p(offset,start+u*w,z+v*h);
+ const outer=[P(0,0),P(1,0),P(1,1),P(0,1)];shape(outer,bezel,tone,1.2);
+ const inner=[P(.065,.13),P(.9,.13),P(.9,.93),P(.065,.93)];shape(inner,'blue',.98,.65);fill(inner,'teal',.22,false);
+ line([P(.07,.965),P(.94,.965)],'paper',.7,.5);const led=P(.95,.07);dot(...led,1.25,'sun');
+ screens.push({P,inner,mode,id:serial++});return P;
+}
+function wallLabel(side,start,z,text,size=5.5){const q=side==='i'?p(start,.04,z):p(.04,start,z);c.save();c.translate(...q);c.transform(side==='i'?1:-1,.5,0,1,0,0);c.font=`${size}px monospace`;c.fillStyle=INK.paper;c.fillText(text,0,0);c.restore()}
+function keyboard(i,j,w=1.12,d=.4,z=1.02){shape(tile(i,j,w,d,z),'paper',1,.7);for(let a=0;a<10;a++)for(let b=0;b<3;b++)fill(tile(i+.06+a*w*.088,j+.035+b*.1,w*.058,.06,z+.005),a===9?'coral':'blue',.6);line([p(i+.28,j+.34,z+.01),p(i+.8,j+.34,z+.01)],'blue',1.8,.65)}
+function mug(i,j,z){const [x,y]=p(i,j,z);shape(rect(x-4,y-9,8,9),'paper',1);fill(rect(x-3,y-7,6,5),'coral',.55,false);line(ellipse(x+5,y-5,3,3,14),'blue',.8,1,true);shape(ellipse(x,y-9,4,1.7),'blue',.8,.6)}
+function plant(i,j,z=0,s=1){const [x,y]=p(i,j,z);shape([[x-7*s,y-12*s],[x+7*s,y-12*s],[x+5*s,y],[x-5*s,y]],'coral',.75);for(let k=0;k<7;k++){const a=-Math.PI/2+(k-3)*.33,L=(17+(k%3)*5)*s,tx=x+Math.cos(a)*L,ty=y-11*s+Math.sin(a)*L;shape([[x,y-11*s],[tx-5*s,ty+7*s],[tx,ty],[tx+4*s,ty+8*s]],'teal',.65+(k%2)*.15,.7)}}
+function speaker(i,j,z,w=.5,h=.9){box(i,j,w,.38,z,h,'blue',.8);const P=(u,v)=>p(i+u*w,j+.385,z+v*h);for(const [v,r] of[[.3,5],[.75,2.7]]){const [x,y]=P(.5,v);shape(ellipse(x,y,r,r*.9),'blue',1,.6);line(ellipse(x,y,r*.6,r*.54),'paper',.6,.7,true);dot(x,y,1.1,'coral',.8)}}
+function desk(i,j,w,d,z=1){for(const a of[.12,w-.26])for(const b of[.12,d-.26])box(i+a,j+b,.13,.13,0,z-.13,'teal',.7);box(i,j,w,d,z-.13,.13,'coral',.55);for(let k=0;k<5;k++)line([p(i+.06,j+.13+k*d/5,z+.004),p(i+w-.06,j+.15+k*d/5,z+.004)],'blue',.5,.25)}
+function monitor(i,j,w=1.6,h=1,z=1,mode='code'){box(i+w*.4,j+.05,w*.22,.35,z,.045,'blue',.7);line([p(i+w*.5,j+.15,z),p(i+w*.5,j+.15,z+.32)],'blue',3);screen('i',i,j+.14,z+.3,w,h,mode);}
+const props=[];const at=(i,j,fn)=>props.push({key:i+j,fn});
+function buildRoom(){
+ screens.length=0;serial=0;props.length=0;
+ box(0,0,12,12,-.4,.4,'blue',.6);fill(tile(0,0,12,12),'teal',.23,false);
+ for(let a=0;a<=12;a++){line([p(a,0),p(a,12)],'blue',.65,.38);line([p(0,a),p(12,a)],'blue',.65,.38)}
+ for(let a=0;a<12;a++)for(let b=0;b<12;b++)if((a+b)%2===0)fill(tile(a+.035,b+.035,.93,.93),'blue',.06,false);
+ shape(faceJ(0,0,12,0,3.4),'blue',.72);fill(faceJ(0,0,12,0,3.4),'teal',.24,false);
+ shape(faceI(0,0,12,0,3.4),'blue',.8);
+ box(-.13,-.13,.13,12.13,3.4,.12,'coral',.55);box(0,-.13,12,.13,3.4,.12,'coral',.5);
+ line([p(0,11.8,.12),p(0,0,.12),p(11.8,0,.12)],'coral',3,.75);
+ for(let a=1;a<12;a++){line([p(0,a,.2),p(0,a,3.4)],'paper',.6,.12);line([p(a,0,.2),p(a,0,3.4)],'paper',.6,.12)}
+ // Wall-mounted monitor array: surveillance, diagrams, terminal and waveform.
+ for(let row=0;row<2;row++)for(let k=0;k<3;k++){const pos=.7+k*2.12;screen('j',pos,.05,1.3+row*1.03,1.94,.88,['code','wave','map','bars','orbit','grid'][row*3+k]);}
+ wallLabel('j',.8,3.25,'SIGNAL ARCHIVE / 06',5);
+ for(const k of[1.2,3.4,5.6])cable([p(.06,k,1.27),p(.07,k,1.05),p(.07,k+.3,.9),p(.08,k+.3,.3)],'coral',1.1);
+ screen('i',1.1,.06,1.63,4.55,1.48,'map');wallLabel('i',1.25,3.27,'NETWORK / NIGHT SHIFT',5.6);
+ screen('i',6.1,.06,2.3,2.35,.84,'bars','paper',.8);screen('i',8.85,.06,2.3,2.35,.84,'wave');
+ line([p(6,.08,2.14),p(11.3,.08,2.14)],'sun',2.3,.85);
+ // Patchboard behind the workbench.
+ shape(faceI(6.1,.04,5.1,1.38,.54),'teal',.6);
+ for(let a=0;a<14;a++){const [x,y]=p(6.3+a*.34,.07,1.68);dot(x,y,1.6,a%4===0?'sun':'paper',.9);const [x2,y2]=p(6.3+a*.34,.08,1.49);dot(x2,y2,1.5,'blue');if(a%3===0)cable([[x,y],[x+2,y+7],[x2+8,y2+8],[x2,y2]],'coral',1.15)}
+ // Back workbench and smaller computers.
+ at(7,1.3,()=>{desk(6,.45,5.35,1.2,.97);monitor(6.2,.75,1.55,.83,.97,'code');monitor(8,.75,1.35,.83,.97,'grid');keyboard(6.4,1.2,1.15,.4,.98);keyboard(8.1,1.22,1,.4,.98);speaker(10.1,.77,.97,.5,.77);mug(9.75,1.33,.98);box(10.8,.6,.36,.65,.98,.14,'sun',.8);});
+ // Server rack, open front with vents and patch cables.
+ at(.8,8.4,()=>{box(.25,7.45,.82,2.35,0,2.85,'blue',.86);shape(faceJ(1.08,7.55,2.15,.14,2.57),'blue',1);
+ for(let r=0;r<8;r++){const z=.23+r*.29;shape(faceJ(1.095,7.64,1.96,z,.22),'teal',.45,.65);for(let n=0;n<7;n++)line([p(1.11,7.76+n*.18,z+.06),p(1.11,7.76+n*.18,z+.17)],'blue',.9);for(let n=0;n<3;n++)dot(...p(1.12,9.13+n*.13,z+.12),1,n===0?'coral':'sun');}
+ for(let k=0;k<5;k++)cable([p(1.13,7.8+k*.25,2.45),p(1.18,7.8+k*.25,1.9),p(1.18,8.5+k*.13,1.7),p(1.13,8.55+k*.13,1.18)],k%2?'sun':'coral',1.2);
+ box(.32,7.6,.6,.6,2.85,.14,'paper',.8);plant(.66,9.35,2.85,.62);
+ });
+ // Floor rug, wiring and large central desk.
+ shape(tile(3.3,4.05,6.9,4.05,.015),'teal',.42);line(tile(3.5,4.25,6.5,3.65,.02),'sun',1.2,.8,true);
+ for(let k=0;k<20;k++)line([p(3.4+k*.34,8.08,.02),p(3.4+k*.34,8.28,.02)],'coral',.9,.65);
+ cable([p(1.1,8.7),p(2.1,8.7),p(2.65,8.1),p(2.65,4.1),p(5,4.1),p(5.3,4.8)],'blue',2.2);
+ cable([p(1.2,8.9),p(2.4,8.9),p(2.9,8.3),p(2.9,3.9),p(8.6,3.9),p(8.6,4.5)],'coral',1.2);
+ at(5,5.4,()=>{desk(3.6,4.55,5.7,1.6,1.04);for(let k=0;k<3;k++)monitor(3.75+k*1.8,4.75,1.65,1.08,1.04,['code','orbit','wave'][k]);keyboard(4.55,5.56,1.42,.4,1.052);keyboard(7.0,5.56,1.05,.4,1.052);shape(tile(6.12,5.55,.52,.4,1.052),'blue',.75);const [mx,my]=p(6.35,5.72,1.075);shape(ellipse(mx,my,3,4),'paper',1,.6);mug(8.78,5.8,1.05);speaker(3.7,5.38,1.05,.35,.65);
+ for(let n=0;n<3;n++)box(8.65,4.74+n*.28,.44,.22,1.05,.07,['sun','teal','coral'][n],.65);
+ const [hx,hy]=p(7.85,5.75,1.07);line(ellipse(hx,hy-3,8,9,24).slice(11),'blue',2.4);shape(rect(hx-9,hy-5,4,9),'coral',.8);shape(rect(hx+5,hy-5,4,9),'coral',.8);
+ });
+ at(8.5,6.2,()=>{box(8.5,6.4,.72,1.06,0,1.3,'paper',.85);shape(faceI(8.55,7.47,.62,.1,1.05),'blue',.94);for(let z of[.43,.86]){const [x,y]=p(8.86,7.49,z);shape(ellipse(x,y,7,7),'teal',.7);line(ellipse(x,y,4.5,4.5),'sun',1,.8,true);dot(x,y,1.4,'paper') }dot(...p(8.86,7.49,1.2),1.6,'coral');});
+ // Swivel chair with quilted back and an empty seat.
+ at(6,7.5,()=>{const [x,y]=p(6,7.4);for(let k=0;k<5;k++){const a=k/5*TAU;line([[x,y-8],[x+Math.cos(a)*23,y+Math.sin(a)*9]],'blue',2.5);dot(x+Math.cos(a)*23,y+Math.sin(a)*9,2.5,'blue')}
+ line([[x,y-8],[x,y-27]],'blue',4);box(5.53,6.97,.95,.85,.66,.15,'coral',.65);box(5.53,7.7,.95,.14,.82,1.05,'teal',.7);for(let k=1;k<4;k++)line([p(5.53+k*.235,7.85,.95),p(5.53+k*.235,7.85,1.75)],'blue',.8,.6);for(let i of[5.46,6.55]){line([p(i,7.3,.76),p(i,7.3,1.15)],'blue',1.9);line([p(i,7.04,1.15),p(i,7.66,1.15)],'blue',3)}
+ });
+ // A stack of chunky CRT televisions in the front right corner.
+ at(9.7,9.5,()=>{box(8.95,9.1,2.1,1.55,0,.35,'coral',.66);for(let a of[9.16,10.83])dot(...p(a,10.6,.05),2.8,'blue');
+ box(9.03,9.22,1.94,1.29,.35,1.08,'sun',.65);screen('i',9.12,10.52,.48,1.74,.83,'bars','paper',.85);
+ box(9.26,9.4,1.43,.97,1.43,.9,'coral',.7);screen('i',9.34,10.38,1.5,1.25,.71,'orbit');
+ line([p(9.96,9.8,2.33),p(9.31,9.8,2.92)],'blue',1.2);line([p(9.96,9.8,2.33),p(10.7,9.8,2.93)],'blue',1.2);dot(...p(9.96,9.8,2.33),2,'blue');
+ });
+ // Spare terminal and repair clutter to the left.
+ at(3,10.3,()=>{desk(2.3,9.65,2.5,1.25,.78);box(2.55,9.8,1.24,.7,.78,.73,'paper',.9);screen('i',2.61,10.52,.86,1.12,.59,'code','paper',1);keyboard(2.68,10.65,1.23,.33,.79);mug(4.42,10.5,.8);for(let k=0;k<3;k++)box(4.04,9.8,.55,.4,.78+k*.07,.065,['coral','blue','sun'][k],.6);});
+ at(1.2,11,()=>plant(1.2,11,0,1.45));
+ at(10.6,3.2,()=>{box(10.2,2.9,1.1,.8,0,.4,'coral',.6);box(10.3,3,1,.68,.4,.22,'paper',.8);for(let k=0;k<7;k++)line([p(10.4,3.16+k*.05,.63),p(11.1,3.16+k*.05,.63)],'blue',.8,.8);plant(11.55,2.9,0,1.25)});
+ // Clock and tiny hanging robot diagram.
+ const [cx,cy]=p(11.48,.03,2.97);shape(ellipse(cx,cy,10,13),'paper',1);for(let k=0;k<12;k++){const a=k/12*TAU;dot(cx+Math.sin(a)*7,cy-Math.cos(a)*10,.75,'blue')}line([[cx,cy-7],[cx,cy],[cx+4,cy+3]],'blue',1.3);
+ props.sort((a,b)=>a.key-b.key);for(const item of props)item.fn();
+ // Scattered repair notes and floppy disks.
+ shape(tile(7.1,9.7,.65,.53,.015),'paper',1);for(let k=0;k<4;k++)line([p(7.18,9.8+k*.08,.02),p(7.64,9.8+k*.08,.02)],'blue',.7,.45);
+ shape(tile(7.8,10.2,.4,.42,.02),'blue',.8);fill(tile(7.88,10.2,.25,.13,.025),'paper',1);fill(tile(7.87,10.43,.26,.15,.025),'coral',.7);
+}
+function drawDisplay(s,t){const {P,inner,mode,id}=s;const Q=(u,v)=>P(.075+u*.815,.145+v*.77);clip(inner,()=>{
+ if(mode==='bars'){const cols=['paper','sun','teal','coral','blue'];for(let k=0;k<5;k++)fill([Q(k/5,.2),Q((k+1)/5,.2),Q((k+1)/5,.94),Q(k/5,.94)],cols[k],.7);for(let k=0;k<12;k++)fill([Q(k/12,.04),Q((k+.8)/12,.04),Q((k+.8)/12,.14),Q(k/12,.14)],'paper',.3+(k%4)*.15);}
+ else if(mode==='code'){for(let k=0;k<9;k++){const v=.87-k*.088;line([Q(.08+(k%3)*.035,v),Q(.14+(k%5)*.09,v)],k%3?'teal':'coral',1,.95);line([Q(.48,v),Q(.56+(k%4)*.075,v)],'paper',.65,.7);}if(Math.floor(t*2+id)%2)line([Q(.09,.055),Q(.18,.055)],'sun',1.8);}
+ else if(mode==='wave'){for(let row=0;row<3;row++){const a=[];for(let k=0;k<75;k++){const u=k/74;a.push(Q(u,.24+row*.25+Math.sin(u*17+t*1.1+id+row)*.075*Math.sin(u*5+row)))}line(a,['sun','teal','coral'][row],1.2,.9)}for(let k=1;k<10;k++)line([Q(k/10,0),Q(k/10,1)],'paper',.45,.15);}
+ else if(mode==='orbit'){for(let r of[.15,.27,.4])line(Array.from({length:45},(_,k)=>Q(.5+Math.cos(k/44*TAU)*r,.5+Math.sin(k/44*TAU)*r)),'teal',.8,.75);line([Q(0,.5),Q(1,.5)],'paper',.5,.4);line([Q(.5,0),Q(.5,1)],'paper',.5,.4);const a=t*.5+id;line([Q(.5,.5),Q(.5+Math.cos(a)*.4,.5+Math.sin(a)*.4)],'sun',1.4);for(let k=0;k<5;k++)dot(...Q(.2+k*.15,.5+Math.sin(k*2)*.27),1.3,'sun');}
+ else if(mode==='map'){const nodes=[[.1,.3],[.3,.7],[.56,.5],[.73,.83],[.91,.4],[.6,.17],[.22,.12]];for(let k=0;k<nodes.length;k++){line([Q(...nodes[k]),Q(...nodes[(k+1)%nodes.length])],'teal',1.1,.8);if(k%2===0)line([Q(...nodes[k]),Q(...nodes[(k+3)%nodes.length])],'paper',.7,.45)}nodes.forEach((n,k)=>{const [x,y]=Q(...n);dot(x,y,2.6,k%2?'sun':'coral');dot(x,y,.9,'paper')});const a=nodes[Math.floor(t*.4)%7],b=nodes[(Math.floor(t*.4)+1)%7],f=(t*.4)%1;dot(...Q(a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f),1.9,'paper');}
+ else{for(let a=0;a<7;a++)for(let b=0;b<5;b++){const u=.06+a*.13,v=.08+b*.17;fill([Q(u,v),Q(u+.09,v),Q(u+.09,v+.12),Q(u,v+.12)],(a+b)%3?'teal':'sun',.25+.55*(.5+.5*Math.sin(a+b+t*.5)));}}
+ // Faint moving scan line.
+ const v=1-((t*.08+id*.137)%1);line([Q(0,v),Q(1,v)],'paper',.6,.3);
+ });}
+let base=document.createElement('canvas'),paper=document.createElement('canvas');
+const B={x:-414,y:-156,w:828,h:582},SCALE=2;
+function cacheRoom(){base.width=B.w*SCALE;base.height=B.h*SCALE;c=base.getContext('2d');c.setTransform(SCALE,0,0,SCALE,-B.x*SCALE,-B.y*SCALE);buildRoom();c=ctx;
+ paper.width=paper.height=600;const g=paper.getContext('2d'),r=rng(43);g.fillStyle=INK.paper;g.fillRect(0,0,600,600);for(let n=0;n<10000;n++){g.fillStyle=n%3?'rgba(120,96,70,.035)':'rgba(255,255,255,.3)';g.fillRect(r()*600,r()*600,r()*1.5+.4,r()*1+.3)}
+}
+let width=0,height=0,dpr=1,zoom=1,pan={x:0,y:0},paused=matchMedia('(prefers-reduced-motion: reduce)').matches,time=0,last=0,paintAt=0;
+function fit(){zoom=Math.min((width-50)/828,(height-145)/582);zoom=Math.max(.18,zoom);pan={x:0,y:0};paintAt=0}
+function resize(){width=innerWidth;height=innerHeight;dpr=Math.min(2,devicePixelRatio||1);canvas.width=width*dpr;canvas.height=height*dpr;fit()}
+function render(){c=ctx;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=ctx.createPattern(paper,'repeat');ctx.fillRect(0,0,width,height);
+ ctx.translate(width/2+pan.x,height/2+pan.y+20);ctx.scale(zoom,zoom);ctx.translate(0,-118);
+ // Subtle paper contact shadow beneath the room slab.
+ fill([p(0,0,-.55),p(12.3,0,-.55),p(12.3,12.3,-.55),p(0,12.3,-.55)],'blue',.06,false);
+ ctx.drawImage(base,B.x,B.y,B.w,B.h);for(const s of screens)drawDisplay(s,time);
+ // Small warm signal spark, akin to a living status light.
+ const [sx,sy]=p(7.15,6.22,2.43+Math.sin(time*1.5)*.05);glow(sx,sy,24,24,'sun',.2);const star=[];for(let k=0;k<24;k++){const a=k/24*TAU+time*.2,r=k%2?3.2:8+(k%3);star.push([sx+Math.cos(a)*r,sy+Math.sin(a)*r])}fill(star,'coral',1);dot(sx,sy,2,'sun');
+}
+function loop(now){requestAnimationFrame(loop);if(last&&!paused)time+=Math.min(.1,(now-last)/1000);last=now;if(now-paintAt>83||!paintAt){render();paintAt=now}}
+let pointers=new Map(),pinch=null;
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);canvas.classList.add('drag');if(pointers.size===2){const [a,b]=[...pointers.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),z:zoom}}});
+canvas.addEventListener('pointermove',e=>{const prev=pointers.get(e.pointerId);if(!prev)return;pointers.set(e.pointerId,[e.clientX,e.clientY]);if(pointers.size===2&&pinch){const [a,b]=[...pointers.values()];zoom=Math.max(.18,Math.min(4,pinch.z*Math.hypot(a[0]-b[0],a[1]-b[1])/Math.max(1,pinch.d)))}else{pan.x+=e.clientX-prev[0];pan.y+=e.clientY-prev[1]}paintAt=0});
+function release(e){pointers.delete(e.pointerId);pinch=null;if(!pointers.size)canvas.classList.remove('drag')}
+canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
+canvas.addEventListener('wheel',e=>{e.preventDefault();const old=zoom;zoom=Math.max(.18,Math.min(4,zoom*Math.exp(-e.deltaY*.001)));const k=zoom/old;pan.x=e.clientX-width/2-(e.clientX-width/2-pan.x)*k;pan.y=e.clientY-height/2-20-(e.clientY-height/2-20-pan.y)*k;paintAt=0},{passive:false});
+document.getElementById('reset').onclick=fit;function motionLabel(){const b=document.getElementById('motion');b.textContent=paused?'Hareketi başlat':'Hareketi durdur';b.setAttribute('aria-pressed',String(paused))}document.getElementById('motion').onclick=()=>{paused=!paused;motionLabel()};
+addEventListener('keydown',e=>{if(e.target instanceof HTMLButtonElement)return;if(e.key==='0')fit();if(e.key==='+'||e.key==='=')zoom=Math.min(4,zoom*1.2);if(e.key==='-')zoom=Math.max(.18,zoom/1.2);paintAt=0});
+addEventListener('resize',resize);cacheRoom();resize();motionLabel();requestAnimationFrame(loop);
+</script>
+</html>

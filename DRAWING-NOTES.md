@@ -2,6 +2,17 @@
 
 `node server.cjs` → http://127.0.0.1:4173 · Tek dosyalık eski sürüm: `reference-room-single-file.html`.
 
+**Giriş ve sunucu:** `server.cjs` hem dosyaları sunar hem küçük bir durum API'si (`/api/config`, `GET|PUT /api/state`) çalıştırır; bağımlılık yok. Privy erişim jetonu ES256 JWT olduğu için Node'un kendi `crypto`'su ile doğrulanır — **uygulama sırrı (app secret) gerekmez**, panelden alınan açık doğrulama anahtarı yeter.
+
+Privy'yi açmak için: `config.example.json` → `config.json`, içine dashboard.privy.io'dan App ID ve Configuration → App settings'teki Verification key (PEM). Sunucuyu yeniden başlat. Anahtar dolu değilse sunucu **misafir modunda** açılır: istemci kendi ürettiği yerel kimliği gönderir, sunucu ona güvenir. Oyun çalışır ve test edilebilir ama **yayına uygun değildir**. `config.json` ve `data/` git'te değil.
+
+| Dosya | İçerik |
+|---|---|
+| `js/auth.js` | Privy vanilla SDK'sı (ESM, istek üzerine yüklenir) + e-posta/kod giriş penceresi. `AUTH.headers()` API çağrıları için kimlik başlığı üretir |
+| `js/sync.js` | Durumu sunucuya yazar/okur. Açılışta çeker, yoksa yereldekini gönderir; değişiklikten 2 sn sonra yollar, sekme gizlenince `keepalive` ile son hali yollar |
+
+Veri `data/<hash>.json` içinde, oyuncu başına bir dosya. **Şimdilik sunucu istemciye güveniyor** — fiyat, ödül ve yerleşim kurallarını sunucuya taşımak bir sonraki adım; kancası `js/sync.js` içinde.
+
 | Dosya | İçerik |
 |---|---|
 | `js/engine.js` | `STYLES` (görünümün tamamı), projeksiyon `p()`/`unproject()`, mürekkep ilkelleri (`fill`, `shade`, `line(s)`, `shape`, `box`…), eşya çerçevesi `frame()` / `wallFrame()`, canlı ekranlar |

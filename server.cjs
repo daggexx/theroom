@@ -1,17 +1,155 @@
+'use strict';
+// Static files plus a small state API. No dependencies: Privy access tokens are plain ES256 JWTs,
+// and Node can verify those with the app's public verification key from the Privy dashboard.
+//
+//   config.json   — copy config.example.json and fill in the Privy app id and verification key.
+//   data/         — one JSON file per player, keyed by a hash of their Privy user id.
+//
+// With no Privy app configured the server runs in guest mode: the client sends its own local id and the
+// server trusts it. That keeps the game playable and testable offline; it is NOT safe for deployment.
 const http = require('node:http');
 const fs = require('node:fs');
+const fsp = require('node:fs/promises');
 const path = require('node:path');
-const TYPES = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml'};
-http.createServer((req,res)=>{
-  let pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
-  if(pathname==='/favicon.ico'){res.writeHead(204);return res.end();}
-  if(pathname==='/')pathname='/index.html';
-  // Only files inside this folder, only known types, nothing hidden.
-  const file=path.join(__dirname,pathname),type=TYPES[path.extname(file)];
-  if(!type||!file.startsWith(__dirname+path.sep)||pathname.split('/').some(part=>part.startsWith('.'))){res.writeHead(404);return res.end('Not found');}
-  fs.stat(file,(error,stat)=>{
-    if(error||!stat.isFile()){res.writeHead(404);return res.end('Not found');}
-    res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store'});
+const crypto = require('node:crypto');
+
+const ROOT = __dirname;
+const DATA = path.join(ROOT, 'data');
+const TYPES = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
+ '.json':'application/json; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml'};
+const NEVER_SERVE = new Set(['config.json','package-lock.json']); // secrets and noise stay off the wire
+const MAX_BODY = 512 * 1024;
+
+function loadConfig(){
+  try{
+    const raw = JSON.parse(fs.readFileSync(path.join(ROOT,'config.json'),'utf8'));
+    const privy = raw.privy || {};
+    if(privy.appId && privy.verificationKey) return {...raw, privy, mode:'privy'};
+    return {...raw, privy, mode:'guest'};
+  }catch{ return {privy:{}, mode:'guest'}; }
+}
+let config = loadConfig();
+
+// ---- Privy access tokens ------------------------------------------------------
+// A Privy access token is an ES256 JWT with iss "privy.io" and aud set to the app id.
+const b64url = s => Buffer.from(s, 'base64url');
+function verifyPrivyToken(token){
+  const parts = String(token||'').split('.');
+  if(parts.length !== 3) throw new Error('malformed token');
+  const [head, body, sig] = parts;
+  let header, claims;
+  try{ header = JSON.parse(b64url(head)); claims = JSON.parse(b64url(body)); }
+  catch{ throw new Error('unreadable token'); }
+  if(header.alg !== 'ES256') throw new Error('unexpected algorithm');
+  // The signature is the raw r||s pair, not DER, so Node needs to be told which encoding to expect.
+  const ok = crypto.verify('sha256', Buffer.from(`${head}.${body}`),
+    {key: config.privy.verificationKey, dsaEncoding: 'ieee-p1363'}, b64url(sig));
+  if(!ok) throw new Error('bad signature');
+  if(claims.iss !== 'privy.io') throw new Error('wrong issuer');
+  if(claims.aud !== config.privy.appId) throw new Error('wrong audience');
+  if(!claims.sub) throw new Error('no subject');
+  const now = Math.floor(Date.now()/1000);
+  if(typeof claims.exp !== 'number' || claims.exp <= now) throw new Error('token expired');
+  return claims;
+}
+
+// Who is asking? A verified Privy user, or — only while no Privy app is configured — a self-declared guest.
+function identify(req){
+  const auth = req.headers.authorization || '';
+  if(auth.startsWith('Bearer ')){
+    if(config.mode !== 'privy') throw new Error('no Privy app configured');
+    const claims = verifyPrivyToken(auth.slice(7).trim());
+    return {id: claims.sub, kind: 'privy'};
+  }
+  const guest = req.headers['x-guest-id'];
+  if(config.mode === 'guest' && typeof guest === 'string' && /^[a-z0-9-]{8,64}$/.test(guest))
+    return {id: 'guest:' + guest, kind: 'guest'};
+  throw new Error('not signed in');
+}
+
+// ---- player state -------------------------------------------------------------
+const fileFor = id => path.join(DATA, crypto.createHash('sha256').update(id).digest('hex').slice(0,32) + '.json');
+async function readState(id){
+  try{ return JSON.parse(await fsp.readFile(fileFor(id),'utf8')); }
+  catch{ return null; }
+}
+async function writeState(id, state){
+  await fsp.mkdir(DATA, {recursive:true});
+  const file = fileFor(id), temp = file + '.tmp';
+  const record = {id, updated: new Date().toISOString(), save: state.save ?? null, room: state.room ?? null};
+  await fsp.writeFile(temp, JSON.stringify(record));
+  await fsp.rename(temp, file);           // a crash mid-write must not leave a half-written save
+  return record;
+}
+
+function send(res, status, body, type='application/json; charset=utf-8'){
+  const data = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
+  res.writeHead(status, {'Content-Type':type, 'Cache-Control':'no-store'});
+  res.end(data);
+}
+function readBody(req){
+  // On overflow we stop buffering and reject at once, but let the rest of the upload drain: tearing the socket
+  // down here would reach the client as a connection error instead of the 413 we want it to see.
+  return new Promise((resolve, reject) => {
+    let size = 0, over = false; const chunks = [];
+    req.on('data', chunk => {
+      if(over) return;
+      size += chunk.length;
+      if(size > MAX_BODY){ over = true; chunks.length = 0; reject(new Error('payload too large')); return; }
+      chunks.push(chunk);
+    });
+    req.on('end', () => { if(over) return;
+      try{ resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }catch{ reject(new Error('bad JSON')); } });
+    req.on('error', reject);
+  });
+}
+
+async function api(req, res, pathname){
+  // What the client needs to boot: never the verification key, never a secret.
+  if(pathname === '/api/config' && req.method === 'GET')
+    return send(res, 200, {mode: config.mode, privy: config.mode === 'privy'
+      ? {appId: config.privy.appId, clientId: config.privy.clientId || null, sdkUrl: config.privy.sdkUrl || null}
+      : null});
+
+  let who;
+  try{ who = identify(req); }
+  catch(error){ return send(res, 401, {error: error.message}); }
+
+  if(pathname === '/api/state' && req.method === 'GET'){
+    const state = await readState(who.id);
+    return send(res, 200, {player: {id: who.id, kind: who.kind}, state: state && {save: state.save, room: state.room, updated: state.updated}});
+  }
+  if(pathname === '/api/state' && req.method === 'PUT'){
+    let body;
+    try{ body = await readBody(req); }
+    catch(error){ req.resume(); return send(res, error.message === 'bad JSON' ? 400 : 413, {error: error.message}); }
+    if(body.save && typeof body.save !== 'object') return send(res, 400, {error:'save must be an object'});
+    if(body.room && typeof body.room !== 'object') return send(res, 400, {error:'room must be an object'});
+    const record = await writeState(who.id, body);
+    return send(res, 200, {ok: true, updated: record.updated});
+  }
+  return send(res, 404, {error: 'no such endpoint'});
+}
+
+function serveFile(res, pathname){
+  const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+  const file = path.join(ROOT, rel), type = TYPES[path.extname(file)];
+  const parts = rel.split('/');
+  const hidden = parts.some(part => part.startsWith('.')) || parts[0] === 'data' || NEVER_SERVE.has(rel);
+  if(!type || hidden || !file.startsWith(ROOT + path.sep)){ res.writeHead(404); return res.end('Not found'); }
+  fs.stat(file, (error, stat) => {
+    if(error || !stat.isFile()){ res.writeHead(404); return res.end('Not found'); }
+    res.writeHead(200, {'Content-Type': type, 'Cache-Control': 'no-store'});
     fs.createReadStream(file).pipe(res);
   });
-}).listen(4173,'127.0.0.1',()=>console.log('Room preview: http://127.0.0.1:4173'));
+}
+
+http.createServer((req, res) => {
+  const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  if(pathname === '/favicon.ico'){ res.writeHead(204); return res.end(); }
+  if(pathname.startsWith('/api/'))
+    return api(req, res, pathname).catch(error => send(res, 500, {error: error.message}));
+  serveFile(res, pathname);
+}).listen(config.port || 4173, '127.0.0.1', () => {
+  console.log(`theroom on http://127.0.0.1:${config.port || 4173}  ·  ${config.mode === 'privy' ? 'Privy girişi açık' : 'misafir modu (Privy yapılandırılmadı)'}`);
+});

@@ -36,10 +36,13 @@ function paintAvatar(){const cv=$('avatar'),k=2,W=34,cell=W/5,r=rng(seedOf(playe
  for(let a=0;a<3;a++)for(let b=0;b<5;b++){const keep=r()>.4,ink=inks[Math.floor(r()*4)],tone=.5+Math.floor(r()*3)*.22;if(!keep)continue;
   fill(rect(a*cell,b*cell,cell,cell),ink,tone,false);fill(rect((4-a)*cell,b*cell,cell,cell),ink,tone,false)}
  c=previous}
-function refreshProfile(){const stats=$('player-stats');$('player-name').textContent=playerTag();stats.textContent='';
+let paintedTag='';
+function refreshProfile(){const stats=$('player-stats'),tag=playerTag();$('player-name').textContent=tag;stats.textContent='';
+ if(tag!==paintedTag){paintedTag=tag;paintAvatar()}                       // the avatar is seeded by the handle
+ $('connect').textContent=(typeof AUTH!=='undefined'&&AUTH.user)?'Çıkış':'Cüzdan bağla';
  if(SANDBOX)stats.append('serbest mod');
  else{const coins=document.createElement('b');coins.textContent='◉ '+fmt(save.coins);stats.append(coins,'  ·  ⌂ '+fmt(roomScore().total))}}
-$('connect').onclick=()=>flash('Cüzdan bağlama Privy ile gelecek');
+$('connect').onclick=()=>AUTH.open();
 
 // ---- SCREEN DIALOG -------------------------------------------------------
 const screenDialog=$('screen-dialog'),screenView=$('screen-view'),screenContext=screenView.getContext('2d'),screenPicker=$('screen-picker');

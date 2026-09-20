@@ -1,0 +1,14 @@
+{
+  "_": "Kopyala: config.json. Bu dosya git'te, config.json değil.",
+  "port": 4173,
+  "privy": {
+    "_appId": "dashboard.privy.io → uygulamanı seç → App ID",
+    "appId": "",
+    "_clientId": "Web istemcisi için Client ID (aynı sayfada). Boş bırakılabilir.",
+    "clientId": "",
+    "_verificationKey": "Configuration → App settings → Verification key. PEM olarak, -----BEGIN PUBLIC KEY----- ile başlar. Bu bir AÇIK anahtar; uygulama sırrı (app secret) gerekmiyor.",
+    "verificationKey": "",
+    "_sdkUrl": "Privy vanilla JS SDK'sının ESM adresi. Boşsa esm.sh kullanılır. Yayına çıkarken kendi sunucundan servis etmen önerilir.",
+    "sdkUrl": ""
+  }
+}

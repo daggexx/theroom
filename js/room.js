@@ -38,11 +38,13 @@ const DEFAULT_ROOM={v:1,items:[
  {type:'plantLarge',i:.5,j:10.5,r:0},{type:'printer',i:10,j:3,r:0},{type:'plantLarge',i:11,j:2,r:0},
  {type:'papers',i:7,j:9.5,r:0},{type:'floppy',i:8,j:10,r:0}
 ]};
+const stateChanged=[];                         // sync.js subscribes here
+const notifyChanged=()=>{for(const f of stateChanged)f()};
 let room,nextId=1;
 function loadRoom(data){room=JSON.parse(JSON.stringify(data));room.w=roomSide(room.w);room.d=roomSide(room.d);setRoomSize(room.w,room.d);room.items=room.items.filter(it=>ITEMS[it.type]);for(const it of room.items)if(!it.id)it.id='n'+nextId++;
  for(const it of room.items){const n=/^n(\d+)$/.exec(it.id);if(n)nextId=Math.max(nextId,+n[1]+1)}
  for(const it of room.items)if(it.on&&!itemById(it.on))delete it.on}
-function saveRoom(){try{localStorage.setItem(STORE_KEY,JSON.stringify(room))}catch{}}
+function saveRoom(){try{localStorage.setItem(STORE_KEY,JSON.stringify(room))}catch{}notifyChanged()}
 function storedRoom(){try{const data=JSON.parse(localStorage.getItem(STORE_KEY));return data&&Array.isArray(data.items)?data:null}catch{return null}}
 const itemById=id=>room.items.find(it=>it.id===id);
 const childrenOf=it=>room.items.filter(other=>other.on===it.id);

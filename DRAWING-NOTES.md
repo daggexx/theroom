@@ -6,7 +6,10 @@
 |---|---|
 | `js/engine.js` | `STYLES` (görünümün tamamı), projeksiyon `p()`/`unproject()`, mürekkep ilkelleri (`fill`, `shade`, `line(s)`, `shape`, `box`…), eşya çerçevesi `frame()` / `wallFrame()`, canlı ekranlar |
 | `js/items.js` | `ITEMS` kataloğu. Her eşya yerel uzayda **bir kez** çizilir (u: genişlik, v: derinlik, ön yüz +v), dört dönüşte de çalışır |
-| `js/items-home.js` | İkinci katalog: ev, mutfak, kripto, süs, duvar (38 eşya) + mağaza kategorileri `CATEGORIES`/`categoryOf`. Ek alanlar: `variants: n` (M ile değişen görünümler, `item.variant`), `onFloor` (yerden başlayan duvar eşyası: kapı) |
+| `js/items-desk.js` | Çalışma istasyonu: masalar, ekranlar, masaüstü eşyaları |
+| `js/items-crypto.js` | Kripto donanımı: madenciler, raflar, ağ, enerji, soğuk cüzdan |
+| `js/items-lab.js` | Atölye/laboratuvar + nadir vitrin parçaları |
+| `js/items-office.js` | Dinlenme, mutfak köşesi, süs ve tüm duvar eşyaları |
 | `js/room.js` | Oda verisi (JSON), yerleşim kuralları `placementOk`, boyama sırası `farToNear`, önbellek + ekran maskeleri |
 | `js/game.js` | Oyun katmanı (şimdilik yalnızca tarayıcıda): para, envanter, mağaza + günün fırsatları, günlük ödül, oda puanı + setler, görevler. Sayılar `PRICES`, `SETS`, `QUESTS`, `START` tablolarında. Kayıt: `localStorage['theroom.save.v1']`, oda: `theroom.game.room.v1` |
 | `js/generate.js` | Bir sayıdan oda döşeyen ilk kaba üretici (eskizlerde kullanılıyor; cüzdandan oda türetmenin temeli) |
@@ -18,7 +21,9 @@
 
 **Oda görünümü:** `room.look = {wall, floor, pattern, trim}` ve `room.style` (baskı stili) oda verisinin parçası; `drawShell()` bunlara göre çizer. Seçenekler ve fiyatlar `js/game.js` → `LOOK_OPTIONS`. Panelde "Oda" sekmesi: kilitli seçenek ilk tıkta 7 sn önizlenir (kaydedilmez), ikinci tıkta satın alınır; başka bir işlem önizlemeyi geri alır. Oyun modunda alt çubuktaki stil menüsü gizlidir (stil satın alınır), serbest modda açıktır.
 
-**Yeni eşya eklemek:** `ITEMS`'e bir kayıt: `kind` (`floor`/`rug`/`wall`), `w,d,h`, isteğe bağlı `top` (üstüne eşya konabilir), `canStack` (üste konabilir), `modes` (ekranı var), `draw(L,item)`, isteğe bağlı `live(L,item,t)`. Çizimde `L.box`, `L.boxes` (uzaktan yakına sıralı), `L.tile`, `L.p`, `L.panel(yüz,…)` + `L.sees(yüz)` kullanılır; yalnızca +i ve +j'ye bakan yüzler görünür.
+**Katalog:** 137 eşya, tema "kripto ve teknoloji ofisi". Kategoriler `CATEGORIES` + `CATEGORY_OF` (her katalog dosyası kendi eşyalarını ekler), `categoryOf(type)` mağaza ve katalog bölümlerini belirler. Ortak çizim yardımcıları `items.js` içinde: `deskOf`, `plantAt`, `disc`, `facing`, `display`.
+
+**Yeni eşya eklemek:** `ITEMS`'e bir kayıt: `kind` (`floor`/`rug`/`wall`), `w,d,h`, isteğe bağlı `top` (üstüne eşya konabilir), `canStack` (üste konabilir), `modes` (ekranı var), `draw(L,item)`, isteğe bağlı `live(L,item,t)`, `variants: n` (M ile değişen görünüm, `item.variant`), `onFloor` (yerden başlayan duvar eşyası). Duvardan odaya taşan parçalar için `wallFrameOut(it,def)` → `Q(across,up,out)`. Fiyatı `js/game.js` → `PRICES`'a eklemeyi unutma. Çizimde `L.box`, `L.boxes` (uzaktan yakına sıralı), `L.tile`, `L.p`, `L.panel(yüz,…)` + `L.sees(yüz)` kullanılır; yalnızca +i ve +j'ye bakan yüzler görünür.
 
 **Derinlik:** Eşyalar ayak izlerine göre topolojik sıralanır (A, i ya da j boyunca B başlamadan bitiyorsa arkadadır). Canlı ekranın önünde bir şey duruyorsa o ekran için küçük bir siluet maskesi üretilir; içerik geçici bir tuvale çizilip maske oyulduktan sonra yerine konur.
 

@@ -62,7 +62,7 @@ function renderMoving(){backdrop();const k=zoom/snapCam.z,cx=width/2,cy=height/2
  ctx.setTransform(dpr*k,0,0,dpr*k,dpr*(cx+pan.x-k*(cx+snapCam.x)),dpr*(cy+pan.y-k*(cy+snapCam.y)));ctx.drawImage(snap,0,0,width,height)}
 function render(){backdrop();fast=!LEGACY;
  for(const s of screens)if(s.mask&&!LEGACY)drawDisplayMasked(s,time);else drawDisplay(s,time);
- for(const it of liveItems){const def=ITEMS[it.type];def.live(frame(it,def,floorZ(it)),it,time)}
+ for(const it of liveItems){const def=ITEMS[it.type];def.live(def.kind==='wall'?wallFrame(it,def):frame(it,def,floorZ(it)),it,time)}
  drawLive(time);
  if(hoveredScreen&&!pointers.size)strokeOutline(hoveredScreen.outer,1.5);
  drawEditor();fast=false;
@@ -140,10 +140,13 @@ const KIND_NOTE={wall:'duvar',rug:'halı'},thumbs=new Map(),thumbStage=document.
 function thumbOf(type){if(thumbs.has(type))return thumbs.get(type);const W=108,H=78,k=2,def=ITEMS[type],it=def.kind==='wall'?{type,wall:'i',a:0,z:0}:{type,i:0,j:0,r:0},bb=bounds(outline(it)),s=Math.min((W-14)/bb.w,(H-14)/bb.h,1.9),previous=c;
  thumbStage.width=W*k;thumbStage.height=H*k;c=thumbCtx;registering=false;c.fillStyle=INK.paper;c.fillRect(0,0,W*k,H*k);c.setTransform(s*k,0,0,s*k,(W/2-(bb.x+bb.w/2)*s)*k,(H/2-(bb.y+bb.h/2)*s)*k);
  if(def.kind==='wall')fill(quad(wallFrame(it,def),-.06,-.12,1.12,1.24),'blue',.8); // a piece of wall behind it
- drawItem(it);if(def.live)def.live(frame(it,def,0),it,0);registering=true;c=previous;
+ drawItem(it);if(def.live)def.live(def.kind==='wall'?wallFrame(it,def):frame(it,def,0),it,0);registering=true;c=previous;
  const cv=document.createElement('canvas');cv.width=W*k;cv.height=H*k;cv.getContext('2d').drawImage(thumbStage,0,0);thumbs.set(type,cv);return cv}
-function card(type,{lines=[],badge='',onClick,disabled=false,cls=''}){const el=document.createElement('button'),pic=document.createElement('canvas'),src=thumbOf(type);el.className='card '+cls;el.dataset.type=type;el.disabled=disabled;
- pic.width=src.width;pic.height=src.height;pic.getContext('2d').drawImage(src,0,0);pic.setAttribute('aria-hidden','true');el.appendChild(pic);
+// Item pictures are painted when their card first scrolls into view, so opening a long list stays instant.
+const paintThumb=cv=>{const src=thumbOf(cv.dataset.type);cv.width=src.width;cv.height=src.height;cv.getContext('2d').drawImage(src,0,0)};
+const thumbSeen=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){thumbSeen.unobserve(e.target);paintThumb(e.target)}},{root:$('catalog-list'),rootMargin:'250px'});
+function card(type,{lines=[],badge='',onClick,disabled=false,cls=''}){const el=document.createElement('button'),pic=document.createElement('canvas');el.className='card '+cls;el.dataset.type=type;el.disabled=disabled;
+ pic.width=216;pic.height=156;pic.dataset.type=type;pic.setAttribute('aria-hidden','true');thumbSeen.observe(pic);el.appendChild(pic);
  const name=document.createElement('span');name.textContent=ITEMS[type].name;el.appendChild(name);for(const text of lines){const s=document.createElement('small');s.textContent=text;el.appendChild(s)}
  if(badge){const b=document.createElement('b');b.textContent=badge;el.appendChild(b)}el.onclick=onClick;return el}
 const noteOf=type=>{const def=ITEMS[type];return KIND_NOTE[def.kind]||(def.canStack?'üste konur':def.top!=null?'üstü kullanılır':'')};

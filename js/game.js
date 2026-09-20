@@ -9,10 +9,22 @@ const SAVE_KEY='theroom.save.v1';
 const PRICES={deskLarge:400,deskMedium:250,deskLow:180,monitor:300,terminal:350,keyboard:60,mousepad:30,mug:25,books:40,headphones:90,speaker:120,
  plantSmall:50,plantLarge:140,papers:10,floppy:15,chair:200,rack:900,tower:450,crtBig:600,crtSmall:380,printer:220,crate:35,spark:1200,rugLarge:320,rugSmall:150,
  wallScreenS:350,wallScreenM:480,wallScreenL:1100,clock:80,patchboard:260,poster:70,label:40,
- bed:520,sofa:480,armchair:300,beanbag:160,bookshelf:380,coffeeTable:150,nightstand:120,wardrobe:420,floorLamp:140,deskLamp:80,catSleeping:650,cactus:45,aquarium:700,trashBin:30,rugRound:240,
- fridge:460,kitchenCounter:520,coffeeMachine:180,microwave:160,pizzaBox:20,ramen:10,
+ sofa:480,armchair:300,beanbag:160,bookshelf:380,coffeeTable:150,floorLamp:140,deskLamp:80,catSleeping:650,cactus:45,aquarium:700,trashBin:30,rugRound:240,
+ coffeeMachine:180,microwave:160,pizzaBox:20,ramen:10,
  miningRig:1500,safe:950,validatorNode:800,hardwareWallet:120,goldBars:1000,trophy:600,rocket:350,moonLamp:220,diamond:2000,
- window:300,door:200,pictureFrame:400,neon:550,chartBoard:320,wallShelf:180,stringLights:130};
+ window:300,door:200,pictureFrame:400,neon:550,chartBoard:320,wallShelf:180,stringLights:130,
+ // workstation
+ deskL:700,standingDesk:560,ultrawide:900,verticalMonitor:420,monitorWall:2200,laptop:520,mechKeyboard:180,drawingTablet:260,micArm:240,webcam:110,ringLight:190,gamingChair:520,cableTray:70,
+ // crypto hardware
+ asicMiner:1100,asicRack:2600,immersionTank:3000,halfRack:700,networkSwitch:220,router:160,nas:340,ups:280,piCluster:300,seedPlate:180,pdu:120,
+ industrialFan:260,generator:900,solarPanel:800,satelliteDish:750,bitcoinATM:2800,goldBitcoin:3500,dataCube:2400,
+ // workshop and showpieces
+ printer3d:1200,resinPrinter:700,filamentRack:300,workbench:640,solderStation:280,oscilloscope:560,robotArm:1800,drone:900,vrHeadset:640,
+ laserCutter:1900,partsDrawers:260,serverCart:420,quantumComputer:5000,teslaCoil:1600,robotDog:2200,hologram:2600,lamboModel:1400,moonRock:900,
+ // lounge and walls
+ meetingTable:900,phoneBooth:1600,lockers:420,waterCooler:200,miniFridge:380,vendingMachine:1400,arcade:1700,foosball:1300,roomba:420,hydroRack:850,
+ projector:380,projectorScreen:420,ticker:1500,orderBook:600,blockHeight:700,halvingClock:500,worldClocks:400,whiteboard:340,whitepaper:600,
+ securityCam:280,cardReader:220,ledStrip:200,plaques:450,vent:90};
 const priceOf=type=>PRICES[type]??100;
 const rarityOf=type=>priceOf(type)>=800?'epic':priceOf(type)>=340?'rare':'common';
 const RARITY_NAME={common:'sıradan',rare:'nadir',epic:'efsane'};
@@ -65,18 +77,28 @@ function unlockLook(group,value,price){earn(-price);save.unlocked=[...(save.unlo
 // ---- ROOM SCORE -------------------------------------------------------------
 // Placed items count for their price, every different kind of item adds a little, and complete sets add a bonus each.
 const countOf=(items,types)=>items.filter(it=>types.includes(it.type)).length;
+// A set is a themed group of items; completing it adds its bonus to the room score.
 const SETS=[
- {name:'Çalışma masası',bonus:300,hint:'masa + monitör ya da terminal + klavye + koltuk',done:it=>countOf(it,['deskLarge','deskMedium','deskLow'])&&countOf(it,['monitor','terminal'])&&countOf(it,['keyboard'])&&countOf(it,['chair'])},
- {name:'Yayın köşesi',bonus:350,hint:'büyük TV + küçük TV + hoparlör',done:it=>countOf(it,['crtBig'])&&countOf(it,['crtSmall'])&&countOf(it,['speaker'])},
+ {name:'Çalışma masası',bonus:300,hint:'masa + ekran + klavye + koltuk',done:it=>countOf(it,DESKS)&&countOf(it,SCREENS)&&countOf(it,KEYS)&&countOf(it,CHAIRS)},
+ {name:'Trader masası',bonus:900,hint:'masa + üç ekran + mum grafiği panosu + koltuk',done:it=>countOf(it,DESKS)&&countOf(it,SCREENS)>=3&&countOf(it,['chartBoard'])&&countOf(it,CHAIRS)},
+ {name:'Yayıncı köşesi',bonus:500,hint:'mikrofon kolu + halka ışık + webcam + kulaklık',done:it=>countOf(it,['micArm'])&&countOf(it,['ringLight'])&&countOf(it,['webcam'])&&countOf(it,['headphones'])},
+ {name:'Ekran duvarı',bonus:350,hint:'büyük TV + küçük TV + hoparlör',done:it=>countOf(it,['crtBig'])&&countOf(it,['crtSmall'])&&countOf(it,['speaker'])},
  {name:'Sunucu odası',bonus:500,hint:'sunucu rafı + kasa + bağlantı paneli',done:it=>countOf(it,['rack'])&&countOf(it,['tower'])&&countOf(it,['patchboard'])},
  {name:'Yeşil köşe',bonus:200,hint:'üç bitki',done:it=>countOf(it,['plantSmall','plantLarge'])>=3},
  {name:'Komuta duvarı',bonus:400,hint:'üç duvar ekranı',done:it=>countOf(it,['wallScreenS','wallScreenM','wallScreenL'])>=3},
  {name:'Oturma köşesi',bonus:350,hint:'kanepe ya da berjer + sehpa + ayaklı lamba',done:it=>countOf(it,['sofa','armchair'])&&countOf(it,['coffeeTable'])&&countOf(it,['floorLamp'])},
- {name:'Yatak odası',bonus:400,hint:'yatak + komodin + gardırop',done:it=>countOf(it,['bed'])&&countOf(it,['nightstand'])&&countOf(it,['wardrobe'])},
- {name:'Mutfak',bonus:400,hint:'buzdolabı + tezgâh + kahve makinesi',done:it=>countOf(it,['fridge'])&&countOf(it,['kitchenCounter'])&&countOf(it,['coffeeMachine'])},
- {name:'Maden ocağı',bonus:700,hint:'iki madenci kasası + doğrulayıcı düğüm',done:it=>countOf(it,['miningRig'])>=2&&countOf(it,['validatorNode'])},
- {name:'Soğuk cüzdan',bonus:600,hint:'çelik kasa + donanım cüzdanı + külçe altın',done:it=>countOf(it,['safe'])&&countOf(it,['hardwareWallet'])&&countOf(it,['goldBars'])},
+ {name:'Maden ocağı',bonus:700,hint:'iki madenci ya da ASIC + doğrulayıcı düğüm',done:it=>countOf(it,['miningRig','asicMiner','asicRack'])>=2&&countOf(it,['validatorNode'])},
+ {name:'Ağ merkezi',bonus:450,hint:'router + ağ anahtarı + NAS',done:it=>countOf(it,['router'])&&countOf(it,['networkSwitch'])&&countOf(it,['nas'])},
+ {name:'Enerji hattı',bonus:600,hint:'UPS + güç dağıtımı + jeneratör ya da güneş paneli',done:it=>countOf(it,['ups'])&&countOf(it,['pdu'])&&countOf(it,['generator','solarPanel'])},
+ {name:'Atölye',bonus:650,hint:'3D yazıcı + lehim istasyonu + parça çekmeceleri',done:it=>countOf(it,['printer3d','resinPrinter'])&&countOf(it,['solderStation'])&&countOf(it,['partsDrawers'])},
+ {name:'Toplantı odası',bonus:550,hint:'toplantı masası + projektör + perde',done:it=>countOf(it,['meetingTable'])&&countOf(it,['projector'])&&countOf(it,['projectorScreen'])},
+ {name:'Mola alanı',bonus:400,hint:'kahve makinesi + mini buzdolabı + su sebili',done:it=>countOf(it,['coffeeMachine'])&&countOf(it,['miniFridge'])&&countOf(it,['waterCooler'])},
+ {name:'Oyun köşesi',bonus:500,hint:'arcade + langırt + armut koltuk',done:it=>countOf(it,['arcade'])&&countOf(it,['foosball'])&&countOf(it,['beanbag'])},
+ {name:'Veri katedrali',bonus:1500,hint:'kuantum bilgisayar + cam küp + hologram',done:it=>countOf(it,['quantumComputer'])&&countOf(it,['dataCube'])&&countOf(it,['hologram'])},
+ {name:'Soğuk cüzdan',bonus:600,hint:'çelik kasa + donanım cüzdanı + külçe altın ya da seed plakası',done:it=>countOf(it,['safe'])&&countOf(it,['hardwareWallet'])&&countOf(it,['goldBars','seedPlate'])},
  {name:'Ayı sezonu',bonus:150,hint:'hazır erişte + pizza kutusu + çöp kutusu',done:it=>countOf(it,['ramen'])&&countOf(it,['pizzaBox'])&&countOf(it,['trashBin'])}];
+const DESKS=['deskLarge','deskMedium','deskLow','deskL','standingDesk'],SCREENS=['monitor','terminal','ultrawide','verticalMonitor','monitorWall','laptop'],
+ KEYS=['keyboard','mechKeyboard'],CHAIRS=['chair','gamingChair'];
 const VARIETY_POINTS=20;
 function roomScore(items=room.items){const base=items.reduce((sum,it)=>sum+priceOf(it.type),0),kinds=new Set(items.map(it=>it.type)).size,sets=SETS.map(s=>({...s,complete:!!s.done(items)}));
  return{base,variety:kinds*VARIETY_POINTS,kinds,sets,total:base+kinds*VARIETY_POINTS+sets.reduce((sum,s)=>sum+(s.complete?s.bonus:0),0)}}

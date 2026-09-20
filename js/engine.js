@@ -151,6 +151,9 @@ function frame(it,def,z0=0){const w=def.w,d=def.d,r=it.r||0,I=it.i,J=it.j;
 // The same for something hung on a wall: P(across,up) over the item's rectangle, a hair in front of the wall.
 function wallFrame(it,def){const{wall,a,z}=it,w=def.w,h=def.h;return(x,y)=>wall==='i'?p(a+x*w,.05,z+y*h):p(.05,a+(1-x)*w,z+y*h)}
 
+// Like wallFrame, but with a third axis: how far a point stands out from the wall into the room.
+const wallFrameOut=(it,def)=>(x,y,out=0)=>it.wall==='i'?p(it.a+x*def.w,.05+out,it.z+y*def.h):p(.05+out,it.a+(1-x)*def.w,it.z+y*def.h);
+
 // ---- LIVE SCREENS --------------------------------------------------------
 // Anything that draws a display registers it here while the room is built; the content is painted every frame on top of the cached room.
 const screens=[];let registering=true,paintIndex=0;

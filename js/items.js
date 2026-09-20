@@ -11,6 +11,9 @@ const deskOf=(w,d,h,topInk='coral',legInk='teal')=>({kind:'floor',w,d,h,top:h,dr
   L.boxes([.1,w-.23].flatMap(a=>[.1,d-.23].map(b=>[a,b,.13,.13,0,h-.13,legInk,.7])));L.box(0,0,w,d,h-.13,.13,topInk,.55);
   for(let k=0;k<5;k++)line([L.p(.06,.13+k*d/5,h+.004),L.p(w-.06,.15+k*d/5,h+.004)],'blue',.5,.25)}});
  // A free-standing display panel on the front side; from behind only its back is seen.
+// A flat disc lying on a surface, and the front face of an item when it is turned toward the camera.
+const disc=(L,cx,cy,r,z,n=22,squash=1)=>Array.from({length:n},(_,k)=>L.p(cx+Math.cos(k/n*TAU)*r,cy+Math.sin(k/n*TAU)*r*squash,z));
+const facing=(L,start,off,z,pw,ph)=>L.sees('front')?L.panel('front',start,off,z,pw,ph):null;
 const display=(L,it,start,off,z,pw,ph,bezel,tone,fallback)=>{const P=L.panel(L.sees('front')?'front':'back',start,off,z,pw,ph);
   if(L.sees('front'))screenOn(P,it.mode||fallback,bezel,tone);else{shape(quad(P,0,0,1,1),bezel==='paper'?'paper':'blue',.8,1.2);shape(quad(P,.3,.25,.4,.4),'blue',.55,.6)}};
 
@@ -75,3 +78,10 @@ const display=(L,it,start,off,z,pw,ph,bezel,tone,fallback)=>{const P=L.panel(L.s
    shape([P(.12,.1),P(.4,.42),P(.58,.26),P(.88,.5),P(.88,.1)],'teal',.7,.6)}},
   label:{name:'Duvar yazısı',kind:'wall',w:3,h:.5,draw(P,it){wallText(it.wall,P(.02,.3),it.text||'NIGHT SHIFT',5.6,lightWalls()?'blue':'paper')}}
  });
+
+// ---- CATEGORIES -------------------------------------------------------------
+// Sections of the shop and the catalogue. Every catalogue file adds its own items to CATEGORY_OF.
+const CATEGORIES=[['workstation','Çalışma'],['crypto','Kripto'],['lab','Atölye'],['lounge','Dinlenme'],['decor','Süs'],['wall','Duvar'],['rug','Halı']];
+const CATEGORY_OF={rack:'crypto',tower:'crypto',crtBig:'lounge',crtSmall:'lounge',crate:'lounge',
+ mug:'decor',books:'decor',headphones:'decor',speaker:'decor',plantSmall:'decor',plantLarge:'decor',spark:'decor'};
+const categoryOf=type=>CATEGORY_OF[type]||(ITEMS[type].kind==='wall'?'wall':ITEMS[type].kind==='rug'?'rug':'workstation');

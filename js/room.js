@@ -3,10 +3,10 @@
 // A room is plain JSON: {v, style?, items:[{id,type,i,j,r,on?} | {id,type,wall,a,z}], ...}. `on` is the id of the item it stands on.
 // Sandbox = the free drawing board (every item unlimited, starts from the demo room). Otherwise the game rules in game.js apply.
 const SANDBOX=['sandbox','default','stress','live'].some(k=>QUERY.has(k));
-const STORE_KEY=SANDBOX?'theroom.room.v1':'theroom.game.room.v1',SNAP=.5,WALL_SNAP_Z=.25;
+const STORE_KEY=SANDBOX?'theroom.room.v1':'theroom.game.room.v1',SNAP=RULES.SNAP,WALL_SNAP_Z=RULES.WALL_SNAP_Z;
 // A room starts ROOM_SIZE × ROOM_SIZE and can be pushed out along either open edge, ROOM_STEP tiles at a time.
-const ROOM_STEP=2,ROOM_MAX=18,roomSide=v=>Math.max(ROOM_SIZE,Math.min(ROOM_MAX,Math.round(+v)||ROOM_SIZE));
-const canExpand=side=>(side==='i'?ROOM_W:ROOM_D)+ROOM_STEP<=ROOM_MAX;
+const ROOM_STEP=RULES.ROOM_STEP,ROOM_MAX=RULES.ROOM_MAX,roomSide=v=>Math.max(ROOM_SIZE,Math.min(ROOM_MAX,Math.round(+v)||ROOM_SIZE));
+const canExpand=side=>RULES.canExpand(ROOM_W,ROOM_D,side);
 const DEFAULT_ROOM={v:1,items:[
  // left wall (constant i), a = position along j
  ...[0,1].flatMap(row=>[0,1,2].map(k=>({type:'wallScreenS',wall:'j',a:.5+k*2,z:1.25+row*1,mode:['bars','orbit','grid','code','wave','map'][row*3+k]}))),
@@ -53,18 +53,13 @@ const newItem=type=>ITEMS[type].kind==='wall'?{id:'n'+nextId++,type,wall:'i',a:0
 // ---- GEOMETRY OF A PLACED ITEM ---------------------------------------------
 const kindOf=it=>ITEMS[it.type].kind;
 const floorZ=it=>it.on?ITEMS[itemById(it.on).type].top:0;
-function footprint(it){const def=ITEMS[it.type],turned=it.r%2===1;return{i0:it.i,j0:it.j,i1:it.i+(turned?def.d:def.w),j1:it.j+(turned?def.w:def.d)}}
-const wallSpan=it=>({a0:it.a,a1:it.a+ITEMS[it.type].w,z0:it.z,z1:it.z+ITEMS[it.type].h});
-const EPS=1e-6,meet=(a,b)=>a.i0<b.i1-EPS&&b.i0<a.i1-EPS&&a.j0<b.j1-EPS&&b.j0<a.j1-EPS,inside=(a,b)=>a.i0>=b.i0-EPS&&a.j0>=b.j0-EPS&&a.i1<=b.i1+EPS&&a.j1<=b.j1+EPS;
+const footprint=it=>RULES.footprint(ITEMS,it);
+const wallSpan=it=>RULES.wallSpan(ITEMS,it);
+const EPS=1e-6;
 function outline(it){const def=ITEMS[it.type];if(def.kind==='wall')return quad(wallFrame(it,def),0,0,1,1);const f=footprint(it);return silhouette(f.i0,f.j0,f.i1-f.i0,f.j1-f.j0,floorZ(it),def.h)}
 
 // May `it` stand where it is now? `ignore` is a set of ids left out of the check (the item itself and whatever moves with it).
-function placementOk(it,ignore=new Set([it.id])){const def=ITEMS[it.type],others=room.items.filter(o=>!ignore.has(o.id));
- if(def.kind==='wall'){const s=wallSpan(it);if(s.a0<-EPS||s.a1>(it.wall==='i'?ROOM_W:ROOM_D)+EPS||s.z0<(def.onFloor?0:.25)-EPS||s.z1>WALL_H-.1+EPS)return false;
-  return!others.some(o=>kindOf(o)==='wall'&&o.wall===it.wall&&(t=>s.a0<t.a1-EPS&&t.a0<s.a1-EPS&&s.z0<t.z1-EPS&&t.z0<s.z1-EPS)(wallSpan(o)))}
- const f=footprint(it);if(!inside(f,{i0:0,j0:0,i1:ROOM_W,j1:ROOM_D}))return false;
- if(it.on){const parent=itemById(it.on);if(!parent||!def.canStack||ITEMS[parent.type].top==null||!inside(f,footprint(parent)))return false;return!others.some(o=>o.on===it.on&&meet(f,footprint(o)))}
- return!others.some(o=>kindOf(o)===def.kind&&!o.on&&meet(f,footprint(o)))}
+const placementOk=(it,ignore)=>RULES.placementOk(ITEMS,room.items,it,ROOM_W,ROOM_D,ignore||new Set([it.id]));
 
 // Quarter turn. Whatever stands on the item turns with it, around the item's own corner.
 function turn(it){if(kindOf(it)==='wall'){it.wall=it.wall==='i'?'j':'i';return}

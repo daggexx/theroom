@@ -3,7 +3,7 @@
 // Knows nothing about which room is drawn — see items.js (catalogue), room.js (room data) and app.js (camera, UI).
 const canvas=document.getElementById('stage'),ctx=canvas.getContext('2d',{alpha:false});
 const TAU=Math.PI*2,QUERY=new URLSearchParams(location.search);
-const ROOM_SIZE=12,WALL_H=3.4; // ROOM_SIZE is only the size a room starts with
+const ROOM_SIZE=RULES.ROOM_SIZE,WALL_H=RULES.WALL_H; // ROOM_SIZE is only the size a room starts with
 let ROOM_W=ROOM_SIZE,ROOM_D=ROOM_SIZE; // the room being drawn: tiles along i and along j (see setRoomSize)
 
 // ---- STYLE ---------------------------------------------------------------

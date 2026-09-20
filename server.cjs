@@ -12,13 +12,32 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const vm = require('node:vm');
+const RULES = require('./js/rules.js');
+
 
 const ROOT = __dirname;
-const DATA = path.join(ROOT, 'data');
+const safeRead=file=>{try{return fs.readFileSync(file,'utf8')}catch{return null}};
+const DATA = path.resolve(ROOT, (JSON.parse(safeRead(path.join(ROOT,'config.json'))||'{}').dataDir)||'data'); // tests point this elsewhere
 const TYPES = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
  '.json':'application/json; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml'};
 const NEVER_SERVE = new Set(['config.json','package-lock.json']); // secrets and noise stay off the wire
 const MAX_BODY = 512 * 1024;
+
+// The item catalogue is written for the browser, so it is read in a sandbox and only the measurements are kept.
+// Sharing the real files means the sizes the server validates against can never drift from the ones it draws with.
+function loadItemDefs(){
+  const context = vm.createContext({});
+  for(const name of ['items.js','items-desk.js','items-crypto.js','items-lab.js','items-office.js'])
+    vm.runInContext(fs.readFileSync(path.join(ROOT,'js',name),'utf8'), context, {filename:name});
+  const items = vm.runInContext('ITEMS', context), defs = {};
+  for(const [type, def] of Object.entries(items))
+    defs[type] = {kind:def.kind, w:def.w, d:def.d, h:def.h, top:def.top, canStack:!!def.canStack, onFloor:!!def.onFloor};
+  return defs;
+}
+const DEFS = loadItemDefs();
+const TYPES_LIST = Object.keys(DEFS);
+const freshRoom = () => ({v:1, w:RULES.ROOM_SIZE, d:RULES.ROOM_SIZE, items:[]});
 
 function loadConfig(){
   try{
@@ -101,10 +120,14 @@ async function readState(id){
   try{ return JSON.parse(await fsp.readFile(fileFor(id),'utf8')); }
   catch{ return null; }
 }
+async function loadPlayer(id){
+  const record = await readState(id);
+  return {save: RULES.normalize(record && record.save), room: (record && record.room) || freshRoom()};
+}
 async function writeState(id, state){
   await fsp.mkdir(DATA, {recursive:true});
   const file = fileFor(id), temp = file + '.tmp';
-  const record = {id, updated: new Date().toISOString(), save: state.save ?? null, room: state.room ?? null};
+  const record = {id, updated: new Date().toISOString(), save: state.save, room: state.room};
   await fsp.writeFile(temp, JSON.stringify(record));
   await fsp.rename(temp, file);           // a crash mid-write must not leave a half-written save
   return record;
@@ -144,17 +167,40 @@ async function api(req, res, pathname){
   catch(error){ return send(res, 401, {error: error.message}); }
 
   if(pathname === '/api/state' && req.method === 'GET'){
-    const state = await readState(who.id);
-    return send(res, 200, {player: {id: who.id, kind: who.kind}, state: state && {save: state.save, room: state.room, updated: state.updated}});
+    const player = await loadPlayer(who.id);
+    return send(res, 200, {player: {id: who.id, kind: who.kind}, state: player});
   }
-  if(pathname === '/api/state' && req.method === 'PUT'){
+
+  // Everything the player did since the last call: the commands are judged one by one, then the room they sent is
+  // checked against the result. The client's own copy of the numbers is never read.
+  if(pathname === '/api/sync' && req.method === 'POST'){
     let body;
     try{ body = await readBody(req); }
     catch(error){ req.resume(); return send(res, error.message === 'bad JSON' ? 400 : 413, {error: error.message}); }
-    if(body.save && typeof body.save !== 'object') return send(res, 400, {error:'save must be an object'});
-    if(body.room && typeof body.room !== 'object') return send(res, 400, {error:'room must be an object'});
-    const record = await writeState(who.id, body);
-    return send(res, 200, {ok: true, updated: record.updated});
+
+    const player = await loadPlayer(who.id);
+    let state = player.save, room = player.room;
+    const results = [];
+    for(const cmd of (Array.isArray(body.commands) ? body.commands : []).slice(0, 50)){
+      const out = RULES.apply(state, cmd, {items: room.items, w: room.w, d: room.d, types: TYPES_LIST});
+      if(out.ok){
+        state = out.state;
+        if(cmd.action === 'expand') room = {...room, w: out.result.w, d: out.result.d};
+      }
+      results.push({action: cmd && cmd.action, ok: out.ok, error: out.error});
+    }
+
+    if(body.room && typeof body.room === 'object'){
+      const error = RULES.validateRoom(DEFS, state, body.room, {w: room.w, d: room.d});
+      if(error) results.push({action:'room', ok:false, error});
+      else{
+        const moved = RULES.reconcile(state, room.items, body.room.items);
+        if(!moved.ok) results.push({action:'room', ok:false, error: moved.error});
+        else{ state = moved.state; room = {...body.room, w: room.w, d: room.d}; }
+      }
+    }
+    await writeState(who.id, {save: state, room});
+    return send(res, 200, {save: state, room, results});
   }
   return send(res, 404, {error: 'no such endpoint'});
 }

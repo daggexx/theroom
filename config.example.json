@@ -3,6 +3,8 @@
   "port": 4173,
   "_hosts": "Dinlenen adresler. Privy izinli alan listesi localhost istediği için ikisi birden.",
   "hosts": ["127.0.0.1", "::1"],
+  "_dataDir": "Oyuncu kayıtlarının klasörü. Varsayılan: data",
+  "dataDir": "data",
   "privy": {
     "_appId": "dashboard.privy.io → uygulamanı seç → App ID",
     "appId": "",

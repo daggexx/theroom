@@ -11,7 +11,13 @@ Privy'yi açmak için: `config.example.json` → `config.json`, içine dashboard
 | `js/auth.js` | Privy vanilla SDK'sı (ESM, istek üzerine yüklenir) + e-posta/kod giriş penceresi. `AUTH.headers()` API çağrıları için kimlik başlığı üretir |
 | `js/sync.js` | Durumu sunucuya yazar/okur. Açılışta çeker, yoksa yereldekini gönderir; değişiklikten 2 sn sonra yollar, sekme gizlenince `keepalive` ile son hali yollar |
 
-Veri `data/<hash>.json` içinde, oyuncu başına bir dosya. **Şimdilik sunucu istemciye güveniyor** — fiyat, ödül ve yerleşim kurallarını sunucuya taşımak bir sonraki adım; kancası `js/sync.js` içinde.
+Veri `data/<hash>.json` içinde, oyuncu başına bir dosya (`config.json` → `dataDir` ile değiştirilebilir; testler `test-data/` kullanır).
+
+**Kural sunucuda.** İstemcinin gönderdiği para ve envanter artık hiç okunmuyor:
+- `POST /api/sync` → `{commands:[…], room}`. Sunucu komutları sırayla `RULES.apply` ile uygular, sonra gelen odayı `RULES.validateRoom` (bilinen eşya, ızgara, çakışma, sınır, açılmış görünüm, boyut) ve `RULES.reconcile` (yerleştirilen/kaldırılan eşya envanterle tutarlı mı) ile denetler. Dönen `{save, room, results}` esas kayıttır.
+- Reddedilen bir şey olursa istemci sunucunun odasını geri alır ve sebebini toast olarak gösterir.
+- Eşya ölçüleri sunucuda ayrı bir tabloda değil: `js/items*.js` bir `vm` bağlamında okunup yalnızca ölçüler çıkarılır, böylece çizimle doğrulama arasında kayma olamaz.
+- Komut listesi: `buy`, `daily`, `quest`, `expand`, `unlock`.
 
 | Dosya | İçerik |
 |---|---|
@@ -22,7 +28,8 @@ Veri `data/<hash>.json` içinde, oyuncu başına bir dosya. **Şimdilik sunucu i
 | `js/items-lab.js` | Atölye/laboratuvar + nadir vitrin parçaları |
 | `js/items-office.js` | Dinlenme, mutfak köşesi, süs ve tüm duvar eşyaları |
 | `js/room.js` | Oda verisi (JSON), yerleşim kuralları `placementOk`, boyama sırası `farToNear`, önbellek + ekran maskeleri |
-| `js/game.js` | Oyun katmanı (şimdilik yalnızca tarayıcıda): para, envanter, mağaza + günün fırsatları, günlük ödül, oda puanı + setler, görevler. Sayılar `PRICES`, `SETS`, `QUESTS`, `START` tablolarında. Kayıt: `localStorage['theroom.save.v1']`, oda: `theroom.game.room.v1` |
+| `js/rules.js` | **Oyunun kuralları, tek yerde.** Fiyatlar, setler, görevler, günlük ödül, fırsatlar, görünüm fiyatları, genişleme fiyatı, yerleşim geometrisi ve `apply(state,cmd,ctx)` komut geçişi. Hem tarayıcıda script olarak hem sunucuda `require` ile çalışır |
+| `js/game.js` | Kuralların üstünde ince bir uyarlayıcı: komutu önce yerelde uygular (arayüz beklemesin), sonra `queueCommand` ile sunucuya yollar. Kayıt: `localStorage['theroom.save.v1']`, oda: `theroom.game.room.v1` |
 | `js/generate.js` | Bir sayıdan oda döşeyen ilk kaba üretici (eskizlerde kullanılıyor; cüzdandan oda türetmenin temeli) |
 | `js/app.js` | Kamera, kare döngüsü, ölçüm paneli, ekran penceresi, düzenleme modu, panel, marka + profil |
 

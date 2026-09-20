@@ -24,16 +24,44 @@ function loadConfig(){
   try{
     const raw = JSON.parse(fs.readFileSync(path.join(ROOT,'config.json'),'utf8'));
     const privy = raw.privy || {};
-    if(privy.appId && privy.verificationKey) return {...raw, privy, mode:'privy'};
+    if(privy.appId) return {...raw, privy, mode:'privy'};
     return {...raw, privy, mode:'guest'};
   }catch{ return {privy:{}, mode:'guest'}; }
 }
 let config = loadConfig();
 
 // ---- Privy access tokens ------------------------------------------------------
-// A Privy access token is an ES256 JWT with iss "privy.io" and aud set to the app id.
+// A Privy access token is an ES256 JWT with iss "privy.io" and aud set to the app id. Privy publishes the app's
+// public signing keys, so there is no key to copy by hand and a rotation is picked up on its own; a
+// verificationKey in config.json overrides that and keeps verification offline.
 const b64url = s => Buffer.from(s, 'base64url');
-function verifyPrivyToken(token){
+const JWKS_URL = id => `https://auth.privy.io/api/v1/apps/${encodeURIComponent(id)}/jwks.json`;
+const jwks = {keys: new Map(), fetched: 0, pending: null};
+function refreshKeys(){
+  if(jwks.pending) return jwks.pending;
+  if(Date.now() - jwks.fetched < 60000) return Promise.resolve();   // an unknown kid must not become a fetch loop
+  jwks.pending = (async () => {
+    try{
+      const response = await fetch(JWKS_URL(config.privy.appId));
+      if(!response.ok) throw new Error('jwks ' + response.status);
+      const {keys} = await response.json();
+      const next = new Map();
+      for(const jwk of keys || [])
+        if(jwk.kty === 'EC' && jwk.alg === 'ES256' && jwk.kid) next.set(jwk.kid, crypto.createPublicKey({key: jwk, format: 'jwk'}));
+      if(next.size) jwks.keys = next;
+      jwks.fetched = Date.now();
+    }finally{ jwks.pending = null; }
+  })();
+  return jwks.pending;
+}
+async function signingKey(kid){
+  if(config.privy.verificationKey) return config.privy.verificationKey;
+  if(!jwks.keys.has(kid)) await refreshKeys();
+  const key = jwks.keys.get(kid);
+  if(!key) throw new Error('unknown signing key');
+  return key;
+}
+async function verifyPrivyToken(token){
   const parts = String(token||'').split('.');
   if(parts.length !== 3) throw new Error('malformed token');
   const [head, body, sig] = parts;
@@ -42,8 +70,8 @@ function verifyPrivyToken(token){
   catch{ throw new Error('unreadable token'); }
   if(header.alg !== 'ES256') throw new Error('unexpected algorithm');
   // The signature is the raw r||s pair, not DER, so Node needs to be told which encoding to expect.
-  const ok = crypto.verify('sha256', Buffer.from(`${head}.${body}`),
-    {key: config.privy.verificationKey, dsaEncoding: 'ieee-p1363'}, b64url(sig));
+  const key = await signingKey(header.kid);
+  const ok = crypto.verify('sha256', Buffer.from(`${head}.${body}`), {key, dsaEncoding: 'ieee-p1363'}, b64url(sig));
   if(!ok) throw new Error('bad signature');
   if(claims.iss !== 'privy.io') throw new Error('wrong issuer');
   if(claims.aud !== config.privy.appId) throw new Error('wrong audience');
@@ -54,11 +82,11 @@ function verifyPrivyToken(token){
 }
 
 // Who is asking? A verified Privy user, or — only while no Privy app is configured — a self-declared guest.
-function identify(req){
+async function identify(req){
   const auth = req.headers.authorization || '';
   if(auth.startsWith('Bearer ')){
     if(config.mode !== 'privy') throw new Error('no Privy app configured');
-    const claims = verifyPrivyToken(auth.slice(7).trim());
+    const claims = await verifyPrivyToken(auth.slice(7).trim());
     return {id: claims.sub, kind: 'privy'};
   }
   const guest = req.headers['x-guest-id'];
@@ -112,7 +140,7 @@ async function api(req, res, pathname){
       : null});
 
   let who;
-  try{ who = identify(req); }
+  try{ who = await identify(req); }
   catch(error){ return send(res, 401, {error: error.message}); }
 
   if(pathname === '/api/state' && req.method === 'GET'){
@@ -165,6 +193,11 @@ for(const host of hosts){
   server.listen(port, host, () => {
     if(listening++) return;
     console.log('theroom on http://localhost:' + port + ' (ve http://127.0.0.1:' + port + ')  ·  ' +
-      (config.mode === 'privy' ? 'Privy girişi açık' : 'misafir modu (Privy yapılandırılmadı)'));
+      (config.mode === 'privy' ? 'Privy girişi açık · ' + config.privy.appId : 'misafir modu (Privy yapılandırılmadı)'));
+    if(config.mode === 'privy' && !config.privy.verificationKey)
+      refreshKeys().then(() => console.log(jwks.keys.size
+        ? `imza anahtarları alındı (${jwks.keys.size})`
+        : 'imza anahtarları alınamadı — App ID doğru mu?'))
+        .catch(error => console.log('imza anahtarları alınamadı: ' + error.message));
   });
 }

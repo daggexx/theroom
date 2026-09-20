@@ -2,9 +2,9 @@
 
 `node server.cjs` → http://127.0.0.1:4173 · Tek dosyalık eski sürüm: `reference-room-single-file.html`.
 
-**Giriş ve sunucu:** `server.cjs` hem dosyaları sunar hem küçük bir durum API'si (`/api/config`, `GET|PUT /api/state`) çalıştırır; bağımlılık yok. Privy erişim jetonu ES256 JWT olduğu için Node'un kendi `crypto`'su ile doğrulanır — **uygulama sırrı (app secret) gerekmez**, panelden alınan açık doğrulama anahtarı yeter.
+**Giriş ve sunucu:** `server.cjs` hem dosyaları sunar hem küçük bir durum API'si (`/api/config`, `GET|PUT /api/state`) çalıştırır; bağımlılık yok. Privy erişim jetonu ES256 JWT olduğu için Node'un kendi `crypto`'su ile doğrulanır — **uygulama sırrı (app secret) gerekmez**. İmza anahtarları Privy'nin açık JWKS ucundan (`auth.privy.io/api/v1/apps/<appId>/jwks.json`) alınır, `kid` tanınmazsa yeniden çekilir (dakikada bir kez), yani anahtar değişimi kendiliğinden yakalanır. `config.json` içine PEM yazılırsa doğrulama tamamen çevrimdışı yapılır.
 
-Privy'yi açmak için: `config.example.json` → `config.json`, içine dashboard.privy.io'dan App ID ve Configuration → App settings'teki Verification key (PEM). Panelde **Settings → Domains → Allowed origins** listesine `http://localhost:4173` ekle (port şart). Sunucuyu yeniden başlat ve sayfayı `localhost` adresinden aç. Anahtar dolu değilse sunucu **misafir modunda** açılır: istemci kendi ürettiği yerel kimliği gönderir, sunucu ona güvenir. Oyun çalışır ve test edilebilir ama **yayına uygun değildir**. `config.json` ve `data/` git'te değil.
+Privy'yi açmak için: `config.example.json` → `config.json`, içine dashboard.privy.io'dan App ID yazmak yeterli (doğrulama anahtarı isteğe bağlı). Panelde **Settings → Domains → Allowed origins** listesine `http://localhost:4173` ekle (port şart). Sunucuyu yeniden başlat ve sayfayı `localhost` adresinden aç. Anahtar dolu değilse sunucu **misafir modunda** açılır: istemci kendi ürettiği yerel kimliği gönderir, sunucu ona güvenir. Oyun çalışır ve test edilebilir ama **yayına uygun değildir**. `config.json` ve `data/` git'te değil.
 
 | Dosya | İçerik |
 |---|---|

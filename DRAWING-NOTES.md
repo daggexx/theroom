@@ -16,6 +16,8 @@
 
 **Oda boyutu:** Oda 12×12 başlar (`ROOM_SIZE`); açık kenarlardan `ROOM_STEP`=2 karo eklenerek `ROOM_MAX`=18'e kadar büyür (`room.w` i boyunca, `room.d` j boyunca). Motor `ROOM_W`/`ROOM_D` ile çizer, `setRoomSize()` önbellek sınırlarını yeniden hesaplar. Fiyat `js/game.js` → `expansionPrice()`; düzenleme modunda kenarlardaki "+" tutamaçları ve Mağaza sekmesindeki satırlar aynı önizlemeyi (nabız + yürüyen kesik çizgi) tetikler.
 
+**Oda görünümü:** `room.look = {wall, floor, pattern, trim}` ve `room.style` (baskı stili) oda verisinin parçası; `drawShell()` bunlara göre çizer. Seçenekler ve fiyatlar `js/game.js` → `LOOK_OPTIONS`. Panelde "Oda" sekmesi: kilitli seçenek ilk tıkta 7 sn önizlenir (kaydedilmez), ikinci tıkta satın alınır; başka bir işlem önizlemeyi geri alır. Oyun modunda alt çubuktaki stil menüsü gizlidir (stil satın alınır), serbest modda açıktır.
+
 **Yeni eşya eklemek:** `ITEMS`'e bir kayıt: `kind` (`floor`/`rug`/`wall`), `w,d,h`, isteğe bağlı `top` (üstüne eşya konabilir), `canStack` (üste konabilir), `modes` (ekranı var), `draw(L,item)`, isteğe bağlı `live(L,item,t)`. Çizimde `L.box`, `L.boxes` (uzaktan yakına sıralı), `L.tile`, `L.p`, `L.panel(yüz,…)` + `L.sees(yüz)` kullanılır; yalnızca +i ve +j'ye bakan yüzler görünür.
 
 **Derinlik:** Eşyalar ayak izlerine göre topolojik sıralanır (A, i ya da j boyunca B başlamadan bitiyorsa arkadadır). Canlı ekranın önünde bir şey duruyorsa o ekran için küçük bir siluet maskesi üretilir; içerik geçici bir tuvale çizilip maske oyulduktan sonra yerine konur.

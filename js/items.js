@@ -73,5 +73,5 @@ const display=(L,it,start,off,z,pw,ph,bezel,tone,fallback)=>{const P=L.panel(L.s
    for(let a=0;a<14;a++){const x=.06+a*.067,top=P(x,.62),low=P(x,.22);dot(...top,1.6,a%4===0?'sun':'paper',.9);dot(...low,1.5,'blue');if(a%3===0)cable([top,[top[0]+2,top[1]+7],[low[0]+8,low[1]+8],low],'coral',1.15)}}},
   poster:{name:'Afiş',kind:'wall',w:1.5,h:2,draw(P){shape(quad(P,.06,.04,.88,.92),'paper',1);fill(quad(P,.12,.1,.76,.8),'sun',.35,false);shape(ring(P,.5,.62,.2,.15),'coral',.8,.6);
    shape([P(.12,.1),P(.4,.42),P(.58,.26),P(.88,.5),P(.88,.1)],'teal',.7,.6)}},
-  label:{name:'Duvar yazısı',kind:'wall',w:3,h:.5,draw(P,it){wallText(it.wall,P(.02,.3),it.text||'NIGHT SHIFT',5.6)}}
+  label:{name:'Duvar yazısı',kind:'wall',w:3,h:.5,draw(P,it){wallText(it.wall,P(.02,.3),it.text||'NIGHT SHIFT',5.6,lightWalls()?'blue':'paper')}}
  });

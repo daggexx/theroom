@@ -90,7 +90,7 @@ const editor={on:false,selected:null,held:null,pending:null,pointer:[0,0]};
 const snapTo=(v,step)=>Math.round(v/step)*step,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function itemAt(clientX,clientY){const[x,y]=toWorld(clientX,clientY);for(let k=paintList.length-1;k>=0;k--)if(room.items.includes(paintList[k])&&pointInPolygon(outline(paintList[k]),x,y))return paintList[k];return null}
 function select(it){editor.selected=it;$('selection').textContent=it?`${ITEMS[it.type].name}${ITEMS[it.type].modes?' · M: ekran':ITEMS[it.type].variants?' · M: çeşit':''}`:'';paintAt=0}
-function hold(it,isNew){const kids=childrenOf(it).map(k=>({it:k,di:k.i-it.i,dj:k.j-it.j}));
+function hold(it,isNew){disarmLook();const kids=childrenOf(it).map(k=>({it:k,di:k.i-it.i,dj:k.j-it.j}));
  editor.held={it,kids,isNew,sticky:isNew,valid:false,ignore:new Set([it.id,...kids.map(k=>k.it.id)]),origin:JSON.stringify([it,...kids.map(k=>k.it)])};
  select(it);cacheRoom(editor.held.ignore)}
 // Where the carried item would land under the pointer: on a wall, on the top of something, or on the floor.
@@ -111,15 +111,15 @@ function drop(){const h=editor.held;if(!h)return;
 function cancelHeld(){const h=editor.held;if(!h)return;if(!h.isNew){h.valid=false;drop();return} // an existing item goes back where it was
  room.items=room.items.filter(it=>it!==h.it);select(null);editor.held=null;cacheRoom()}
 function addNew(type){if(editor.held)cancelHeld();if(!SANDBOX&&owned(type)<1)return;const it=newItem(type);room.items.push(it);hold(it,true);carry(...editor.pointer)}
-function turnSelected(){const h=editor.held,it=h?h.it:editor.selected;if(!it)return;
+function turnSelected(){disarmLook();const h=editor.held,it=h?h.it:editor.selected;if(!it)return;
  if(h){turn(it);for(const k of h.kids){k.di=k.it.i-it.i;k.dj=k.it.j-it.j}carry(...editor.pointer);return}
  const group=[it,...childrenOf(it)],before=JSON.stringify(group);turn(it);
  if(!placementOk(it,new Set(group.map(g=>g.id)))){const old=JSON.parse(before);group.forEach((g,k)=>Object.assign(g,old[k]));flash('Buraya sığmıyor');return}
  saveRoom();cacheRoom()}
-function removeSelected(){const it=editor.selected;if(!it||editor.held)return;const gone=new Set([it.id,...childrenOf(it).map(k=>k.id)]);if(!SANDBOX)for(const o of room.items)if(gone.has(o.id))give(o.type); // back into the inventory
+function removeSelected(){disarmLook();const it=editor.selected;if(!it||editor.held)return;const gone=new Set([it.id,...childrenOf(it).map(k=>k.id)]);if(!SANDBOX)for(const o of room.items)if(gone.has(o.id))give(o.type); // back into the inventory
  room.items=room.items.filter(o=>!gone.has(o.id));select(null);saveRoom();cacheRoom();refreshPanel();flash(SANDBOX?'Kaldırıldı':'Envantere döndü')}
 // M: next programme on a display, or the next look of an item that comes in several variants.
-function nextMode(){const it=editor.selected,def=it&&ITEMS[it.type];if(!it||editor.held||!(def.modes||def.variants))return;
+function nextMode(){disarmLook();const it=editor.selected,def=it&&ITEMS[it.type];if(!it||editor.held||!(def.modes||def.variants))return;
  if(def.variants)it.variant=((it.variant||0)+1)%def.variants;else it.mode=SCREEN_MODES[(SCREEN_MODES.indexOf(it.mode)+1)%SCREEN_MODES.length];saveRoom();cacheRoom()}
 let flashTimer=0;function flash(text){const el=$('selection'),keep=el.textContent;el.textContent=text;clearTimeout(flashTimer);flashTimer=setTimeout(()=>select(editor.selected),1400)}
 function drawEditor(){if(!editor.on)return;const h=editor.held;
@@ -127,7 +127,7 @@ function drawEditor(){if(!editor.on)return;const h=editor.held;
   fill(mark,h.valid?'teal':'coral',.6,false);registering=false;ctx.globalAlpha=.9;for(const o of[it,...farToNear(h.kids.map(k=>k.it))])drawItem(o);ctx.globalAlpha=1;registering=true;strokeOutline(mark,1.5)}
  else if(editor.selected&&room.items.includes(editor.selected))strokeOutline(outline(editor.selected),1.5,true);
  drawExpansion()}
-function setEditing(on){if(!on&&editor.held)cancelHeld();expand.hover=expand.armed=null;editor.on=on;if(!on)select(null);document.body.classList.toggle('editing',on);$('edit').textContent=on?'Bitti ✓':'Düzenle ✎';$('edit').setAttribute('aria-pressed',String(on));
+function setEditing(on){disarmLook();if(!on&&editor.held)cancelHeld();expand.hover=expand.armed=null;editor.on=on;if(!on)select(null);document.body.classList.toggle('editing',on);$('edit').textContent=on?'Bitti ✓':'Düzenle ✎';$('edit').setAttribute('aria-pressed',String(on));
  $('hint').textContent=on?'Eşyayı sürükle · R döndür · Del kaldır · Esc bırak':'Sürükle · Yakınlaş · Bir ekrana tıkla';hover(null);if(width)fit()}
 $('edit').onclick=()=>setEditing(!editor.on);
 let resetArmed=0;$('reset-room').onclick=e=>{if(Date.now()-resetArmed>3000){resetArmed=Date.now();e.target.textContent='Emin misin?';setTimeout(()=>e.target.textContent='Odayı sıfırla',3000);return}
@@ -147,11 +147,11 @@ function card(type,{lines=[],badge='',onClick,disabled=false,cls=''}){const el=d
  const name=document.createElement('span');name.textContent=ITEMS[type].name;el.appendChild(name);for(const text of lines){const s=document.createElement('small');s.textContent=text;el.appendChild(s)}
  if(badge){const b=document.createElement('b');b.textContent=badge;el.appendChild(b)}el.onclick=onClick;return el}
 const noteOf=type=>{const def=ITEMS[type];return KIND_NOTE[def.kind]||(def.canStack?'üste konur':def.top!=null?'üstü kullanılır':'')};
-const TABS=SANDBOX?[['catalog','Katalog']]:[['inventory','Envanter'],['shop','Mağaza'],['quests','Görevler'],['score','Puan']];let tab=TABS[0][0];
+const TABS=SANDBOX?[['catalog','Katalog'],['look','Oda']]:[['inventory','Envanter'],['shop','Mağaza'],['look','Oda'],['quests','Görevler'],['score','Puan']];let tab=TABS[0][0];
 function row(html,cls=''){const el=document.createElement('div');el.className='row '+cls;el.innerHTML=html;return el}
-function refreshPanel(){const list=$('catalog-list'),tabs=$('tabs'),score=roomScore();const keepScroll=list.scrollTop;list.textContent='';tabs.textContent='';list.className=tab==='quests'||tab==='score'?'rows':'';
+function refreshPanel(){const list=$('catalog-list'),tabs=$('tabs'),score=roomScore();const keepScroll=list.scrollTop;list.textContent='';tabs.textContent='';list.className=tab==='quests'||tab==='score'||tab==='look'?'rows':'';
  $('wallet').textContent=SANDBOX?'serbest mod · her eşya sınırsız':'◉ '+fmt(save.coins)+'  ·  oda puanı '+fmt(score.total);$('reset-room').hidden=!SANDBOX;
- for(const[id,label]of TABS){const b=document.createElement('button');b.textContent=label+(id==='quests'&&questsReady()?' •':'')+(id==='shop'&&dailyReady()?' •':'');b.setAttribute('aria-pressed',String(id===tab));b.onclick=()=>{tab=id;list.scrollTop=0;refreshPanel()};tabs.appendChild(b)}
+ for(const[id,label]of TABS){const b=document.createElement('button');b.textContent=label+(id==='quests'&&questsReady()?' •':'')+(id==='shop'&&dailyReady()?' •':'');b.setAttribute('aria-pressed',String(id===tab));b.onclick=()=>{disarmLook();tab=id;list.scrollTop=0;refreshPanel()};tabs.appendChild(b)}
  const sections=each=>{for(const[id,label]of CATEGORIES){const types=Object.keys(ITEMS).filter(t=>categoryOf(t)===id).sort((x,y)=>priceOf(x)-priceOf(y));if(!types.length)continue;list.appendChild(row(label+' · '+types.length,'head'));types.forEach(each)}};
  if(tab==='catalog')sections(type=>list.appendChild(card(type,{lines:[noteOf(type)].filter(Boolean),onClick:()=>addNew(type)})));
  if(tab==='inventory'){const types=Object.keys(ITEMS).filter(t=>owned(t)>0);if(!types.length)list.appendChild(row('Envanterin boş. Mağazadan eşya al ya da görevlerden para kazan.','note'));
@@ -164,11 +164,28 @@ function refreshPanel(){const list=$('catalog-list'),tabs=$('tabs'),score=roomSc
   list.appendChild(row('Günün fırsatları · %'+Math.round(DEAL_OFF*100)+' indirim · birer adet','head'));
   for(const d of dealsToday())list.appendChild(card(d.type,{cls:'deal '+rarityOf(d.type),lines:[RARITY_NAME[rarityOf(d.type)]],badge:d.sold?'satıldı':'◉ '+fmt(d.price),disabled:d.sold||save.coins<d.price,onClick:()=>{if(buy(d.type,true)){flash(ITEMS[d.type].name+' envanterde');refreshPanel()}}}));
   sections(type=>list.appendChild(card(type,{cls:rarityOf(type),lines:[RARITY_NAME[rarityOf(type)]+(owned(type)?' · sende '+owned(type):'')],badge:'◉ '+fmt(priceOf(type)),disabled:save.coins<priceOf(type),onClick:()=>{if(buy(type)){flash(ITEMS[type].name+' envanterde');refreshPanel()}}})))}
+ if(tab==='look')lookPanel(list);
  if(tab==='quests')for(const q of QUESTS){const state=questState(q),el=row('<span>'+q.text+'</span>'+(state==='ready'?'<button>+'+q.reward+' ◉</button>':'<em>'+(state==='claimed'?'alındı ✓':'+'+q.reward+' ◉')+'</em>'),state);if(state==='ready')el.querySelector('button').onclick=()=>{flash('+'+claimQuest(q.id)+' ◉');refreshPanel()};list.appendChild(el)}
  if(tab==='score'){list.appendChild(row('<span>Eşyalar ('+room.items.length+')</span><em>'+fmt(score.base)+'</em>'));list.appendChild(row('<span>Çeşitlilik ('+score.kinds+' tür × '+VARIETY_POINTS+')</span><em>'+fmt(score.variety)+'</em>'));
   list.appendChild(row('Setler','head'));for(const s of score.sets)list.appendChild(row('<span>'+s.name+'<small>'+s.hint+'</small></span><em>'+(s.complete?'+'+s.bonus+' ✓':'+'+s.bonus)+'</em>',s.complete?'claimed':'open'));
   list.appendChild(row('<span>Toplam</span><em>'+fmt(score.total)+'</em>','total'))}
  list.scrollTop=keepScroll}
+
+// ---- ROOM LOOK ---------------------------------------------------------------
+// Wall, floor, floor pattern, trim and print style. A locked option is tried on first (the room shows it for a few
+// seconds, nothing is saved) and bought with a second click; anything else the player does puts the old look back.
+const lookArm={key:null,backup:null,timer:0};
+function setLook(group,value){if(group==='style'){room.style=value;switchStyle(value)}else{room.look={...lookOf(),[group]:value};cacheRoom()}}
+function disarmLook(){if(!lookArm.key)return;clearTimeout(lookArm.timer);lookArm.key=null;const b=JSON.parse(lookArm.backup);room.look=b.look;room.style=b.style;if(b.style!==styleName)switchStyle(b.style);else cacheRoom()}
+function chooseLook(group,value,price){const key=group+':'+value;
+ if(lookUnlocked(group,value)){disarmLook();setLook(group,value);saveRoom();refreshPanel();return}
+ if(lookArm.key===key){if(save.coins<price){flash('Yetersiz ◉ — '+fmt(price)+' gerekiyor');return}clearTimeout(lookArm.timer);lookArm.key=null;unlockLook(group,value,price);saveRoom();refreshPanel();flash('Açıldı ve uygulandı');return}
+ disarmLook();lookArm.key=key;lookArm.backup=JSON.stringify({look:lookOf(),style:room.style||styleName});setLook(group,value);lookArm.timer=setTimeout(()=>{disarmLook();refreshPanel()},7000);refreshPanel();flash('Önizleme — almak için tekrar tıkla')}
+function lookPanel(list){const current={...lookOf(),style:styleName};
+ for(const[group,title]of LOOK_GROUPS){list.appendChild(row(title,'head'));const box=document.createElement('div');box.className='opts';
+  for(const[value,label,price,chip]of LOOK_OPTIONS[group]){const b=document.createElement('button'),open=lookUnlocked(group,value),armed=lookArm.key===group+':'+value;b.className='opt'+(armed?' armed':'');b.setAttribute('aria-pressed',String(current[group]===value&&!armed));
+   if(chip){const dot=document.createElement('i');dot.style.background=INK[chip];b.appendChild(dot)}b.appendChild(document.createTextNode(label+(armed?' · onayla ◉ '+fmt(price):open?'':' · ◉ '+fmt(price))));b.onclick=()=>chooseLook(group,value,price);box.appendChild(b)}
+  list.appendChild(box)}}
 
 // ---- ROOM EXPANSION ----------------------------------------------------------
 // A "+" handle sits on each open edge while editing. Pointing at one previews the strip it would add — floor and the piece
@@ -178,7 +195,7 @@ const handleAt=side=>side==='i'?p(ROOM_W+.9,ROOM_D/2):p(ROOM_W/2,ROOM_D+.9);
 function expandSideAt(clientX,clientY){if(!editor.on||editor.held)return null;const[x,y]=toWorld(clientX,clientY);
  for(const side of['i','j'])if(canExpand(side)){const h=handleAt(side);if(Math.hypot(x-h[0],y-h[1])<13)return side}return null}
 function setExpandHover(side){if(expand.hover===side)return;expand.hover=side;if(!side)expand.armed=null;canvas.style.cursor=side?'pointer':'default';paintAt=0}
-function clickExpand(side){const price=expansionPrice(side);
+function clickExpand(side){disarmLook();const price=expansionPrice(side);
  if(expand.armed!==side||performance.now()-expand.armedAt>4000){expand.armed=side;expand.armedAt=performance.now();expand.hover=side;paintAt=0;return}
  expand.armed=null;if(!buyExpansion(side)){flash('Yetersiz ◉ — '+fmt(price)+' gerekiyor');return}
  expand.hover=null;saveRoom();cacheRoom();refreshPanel();fit();flash('Oda büyüdü: '+ROOM_W+' × '+ROOM_D)}
@@ -222,9 +239,11 @@ addEventListener('keydown',e=>{if(screenDialog.open||e.target instanceof HTMLSel
  if(editor.on){if(key==='r'){turnSelected();return}if(key==='delete'||key==='backspace'){removeSelected();e.preventDefault();return}if(key==='m'){nextMode();return}if(key==='escape'){if(editor.held)cancelHeld();else select(null);return}}
  if(e.target instanceof HTMLButtonElement)return;
  if(key==='e')setEditing(!editor.on);if(key==='0')fit();if(key==='+'||key==='=')zoom=Math.min(4,zoom*1.2);if(key==='-')zoom=Math.max(.18,zoom/1.2);
- if(key==='s'){const names=Object.keys(STYLES);switchStyle(names[(names.indexOf(styleName)+1)%names.length])}paintAt=0});
+ if(key==='s'&&SANDBOX){const names=Object.keys(STYLES);switchStyle(names[(names.indexOf(styleName)+1)%names.length])}paintAt=0});
 addEventListener('resize',resize);
 
 // ---- START ---------------------------------------------------------------
 loadRoom(QUERY.has('default')?DEFAULT_ROOM:storedRoom()||(SANDBOX?DEFAULT_ROOM:{v:1,items:[]}));
+if(room.style&&!QUERY.has('style'))setStyle(room.style); // the room carries its own print style
+document.body.classList.toggle('game',!SANDBOX);
 stylePicker.value=styleName;makePaper();cacheRoom();refreshPanel();resize();motionLabel();if(QUERY.has('edit'))setEditing(true);requestAnimationFrame(loop);

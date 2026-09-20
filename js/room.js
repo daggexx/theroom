@@ -86,15 +86,23 @@ function paintOrderOf(items){const floor=items.filter(it=>kindOf(it)==='floor'&&
 // ---- BUILDING THE PICTURE ----------------------------------------------------
 const paintList=[],liveItems=[];
 function drawItem(it){const def=ITEMS[it.type];if(def.kind==='wall')def.draw(wallFrame(it,def),it);else def.draw(frame(it,def,floorZ(it)),it)}
-function drawShell(){const W=ROOM_W,D=ROOM_D;
- box(0,0,W,D,-.4,.4,'blue',.6);fill(tile(0,0,W,D),'teal',.23,false);
- for(let a=0;a<=W;a++)line([p(a,0),p(a,D)],'blue',.65,.38);for(let b=0;b<=D;b++)line([p(0,b),p(W,b)],'blue',.65,.38);
- for(let a=0;a<W;a++)for(let b=0;b<D;b++)if((a+b)%2===0)shade(tile(a+.035,b+.035,.93,.93),.06);
- shape(faceJ(0,0,D,0,WALL_H),'blue',.72);fill(faceJ(0,0,D,0,WALL_H),'teal',.24,false);
- shape(faceI(0,0,W,0,WALL_H),'blue',.8);
- box(-.13,-.13,.13,D+.13,WALL_H,.12,'coral',.55);box(0,-.13,W,.13,WALL_H,.12,'coral',.5);
- line([p(0,D-.2,.12),p(0,0,.12),p(W-.2,0,.12)],'coral',3,.75);
- for(let b=1;b<D;b++)line([p(0,b,.2),p(0,b,WALL_H)],'paper',.6,.12);for(let a=1;a<W;a++)line([p(a,0,.2),p(a,0,WALL_H)],'paper',.6,.12)}
+// The room's own look: wall ink, floor finish, floor pattern and trim ink (room.look); anything missing falls back to the classic room.
+const LOOK_DEFAULT={wall:'blue',floor:'teal',pattern:'checker',trim:'coral'},lookOf=()=>({...LOOK_DEFAULT,...(typeof room==='object'&&room&&room.look)});
+const WALL_TONES={blue:[.72,.8],teal:[.55,.66],coral:[.48,.58],sun:[.5,.62]},lightWalls=()=>['paper','sun'].includes(lookOf().wall);
+function drawShell(){const W=ROOM_W,D=ROOM_D,look=lookOf(),floor=tile(0,0,W,D),light=look.floor==='light'||look.floor==='wood';
+ box(0,0,W,D,-.4,.4,'blue',.6);
+ if(look.floor==='teal')fill(floor,'teal',.23,false);else if(look.floor==='wood'){fill(floor,'sun',.5);fill(floor,'coral',.22,false)}else if(look.floor==='coral'){fill(floor,'coral',.42);shade(floor,.12)}else if(look.floor==='light'){fill(floor,'paper',1);shade(floor,.1)}
+ const faint=light?.3:.38;
+ if(look.pattern==='planks'){for(let b=0;b<=D;b++)line([p(0,b),p(W,b)],'blue',.7,faint);const joints=[];for(let b=0;b<D;b++)for(let a=(b*5)%3+1;a<W;a+=3)joints.push([p(a,b),p(a,b+1)]);lines(joints,'blue',.6,faint*.8)}
+ else if(look.pattern==='tiles'){for(let a=0;a<=W;a+=2)line([p(a,0),p(a,D)],'blue',1.3,faint);for(let b=0;b<=D;b+=2)line([p(0,b),p(W,b)],'blue',1.3,faint);for(let a=0;a<W;a+=2)for(let b=0;b<D;b+=2)if((a+b)%4===0)shade(tile(a+.06,b+.06,Math.min(2,W-a)-.12,Math.min(2,D-b)-.12),.05)}
+ else{const tone=look.pattern==='plain'?faint*.5:faint;for(let a=0;a<=W;a++)line([p(a,0),p(a,D)],'blue',.65,tone);for(let b=0;b<=D;b++)line([p(0,b),p(W,b)],'blue',.65,tone);
+  if(look.pattern==='checker')for(let a=0;a<W;a++)for(let b=0;b<D;b++)if((a+b)%2===0)shade(tile(a+.035,b+.035,.93,.93),light?.08:.06)}
+ const left=faceJ(0,0,D,0,WALL_H),right=faceI(0,0,W,0,WALL_H);
+ if(look.wall==='paper'){shape(left,'paper',1);shade(left,.14);shape(right,'paper',1);shade(right,.06)}
+ else{const tones=WALL_TONES[look.wall]||WALL_TONES.blue;shape(left,look.wall,tones[0]);if(look.wall==='blue')fill(left,'teal',.24,false);else shade(left,.1);shape(right,look.wall,tones[1])}
+ box(-.13,-.13,.13,D+.13,WALL_H,.12,look.trim,.55);box(0,-.13,W,.13,WALL_H,.12,look.trim,.5);
+ line([p(0,D-.2,.12),p(0,0,.12),p(W-.2,0,.12)],look.trim,3,.75);
+ {const ink=lightWalls()?'blue':'paper';for(let b=1;b<D;b++)line([p(0,b,.2),p(0,b,WALL_H)],ink,.6,.12);for(let a=1;a<W;a++)line([p(a,0,.2),p(a,0,WALL_H)],ink,.6,.12)}}
 // ?stress=N scatters N extra static props; they land in the cached picture like any other furniture.
 const STRESS=Math.max(0,Math.min(20000,parseInt(QUERY.get('stress'))||0));
 function stressProps(){const r=rng(9001),kinds=['crate','plantSmall','speaker','books','mug'],out=[];for(let n=0;n<STRESS;n++)out.push({id:'s'+n,type:kinds[Math.floor(r()*kinds.length)],i:Math.round(r()*22)/2,j:Math.round(r()*22)/2,r:Math.floor(r()*4)});return out}

@@ -50,6 +50,18 @@ function expansionPrice(side){const added=ROOM_STEP*(side==='i'?ROOM_D:ROOM_W);r
 function buyExpansion(side){if(!canExpand(side))return false;const price=expansionPrice(side);if(save.coins<price)return false;if(price)earn(-price);
  if(side==='i')room.w+=ROOM_STEP;else room.d+=ROOM_STEP;setRoomSize(room.w,room.d);return true}
 
+// ---- ROOM LOOK --------------------------------------------------------------
+// [value, label, price, colour chip]. Price 0 = everyone has it. Bought options are kept in save.unlocked as 'group:value'.
+const LOOK_GROUPS=[['wall','Duvar'],['floor','Zemin'],['pattern','Zemin deseni'],['trim','Süpürgelik ve pervaz'],['style','Baskı stili']];
+const LOOK_OPTIONS={
+ wall:[['blue','Lacivert',0,'blue'],['teal','Petrol',150,'teal'],['coral','Mercan',150,'coral'],['sun','Hardal',150,'sun'],['paper','Açık',200,'paper']],
+ floor:[['teal','Gece',0,'teal'],['blue','Koyu',120,'blue'],['wood','Ahşap',250,'sun'],['coral','Kiremit',200,'coral'],['light','Açık',200,'paper']],
+ pattern:[['checker','Dama',0],['plain','Düz',80],['planks','Parke',250],['tiles','Karo',250]],
+ trim:[['coral','Mercan',0,'coral'],['sun','Sarı',60,'sun'],['teal','Petrol',60,'teal'],['blue','Lacivert',60,'blue'],['paper','Beyaz',60,'paper']],
+ style:[['riso','Riso',0],['hard','Sert riso',300],['flat','Düz vektör',300],['gravur','Gravür',800],['comic','Çizgi roman',800],['night','Gece / neon',1200]]};
+const lookUnlocked=(group,value)=>SANDBOX||LOOK_OPTIONS[group].find(o=>o[0]===value)?.[2]===0||(save.unlocked||[]).includes(group+':'+value);
+function unlockLook(group,value,price){earn(-price);save.unlocked=[...(save.unlocked||[]),group+':'+value];saveGame()}
+
 // ---- ROOM SCORE -------------------------------------------------------------
 // Placed items count for their price, every different kind of item adds a little, and complete sets add a bonus each.
 const countOf=(items,types)=>items.filter(it=>types.includes(it.type)).length;

@@ -87,6 +87,7 @@ function drawItem(it){const def=ITEMS[it.type];if(def.kind==='wall')def.draw(wal
 const LOOK_DEFAULT={wall:'blue',floor:'teal',pattern:'checker',trim:'coral'},lookOf=()=>({...LOOK_DEFAULT,...(typeof room==='object'&&room&&room.look)});
 const WALL_TONES={blue:[.72,.8],teal:[.55,.66],coral:[.48,.58],sun:[.5,.62]},lightWalls=()=>['paper','sun'].includes(lookOf().wall);
 function drawShell(){const W=ROOM_W,D=ROOM_D,look=lookOf(),floor=tile(0,0,W,D),light=look.floor==='light'||look.floor==='wood';
+ if(room.floor===false)return;                  // the landing hall draws its own ground
  box(0,0,W,D,-.4,.4,'blue',.6);
  if(look.floor==='teal')fill(floor,'teal',.23,false);else if(look.floor==='wood'){fill(floor,'sun',.5);fill(floor,'coral',.22,false)}else if(look.floor==='coral'){fill(floor,'coral',.42);shade(floor,.12)}else if(look.floor==='light'){fill(floor,'paper',1);shade(floor,.1)}
  const faint=light?.3:.38;

@@ -48,7 +48,9 @@ Veri `data/<hash>.json` içinde, oyuncu başına bir dosya (`config.json` → `d
 
 **Derinlik:** Eşyalar ayak izlerine göre topolojik sıralanır (A, i ya da j boyunca B başlamadan bitiyorsa arkadadır). Canlı ekranın önünde bir şey duruyorsa o ekran için küçük bir siluet maskesi üretilir; içerik geçici bir tuvale çizilip maske oyulduktan sonra yerine konur.
 
-**Anasayfa:** `home.html` — duvarsız açık platformda bir ajan laboratuvarı, tam ekran, fareyle gezilebilir (sürükle, tekerlek, çift parmak). Sahne bir kez önbelleğe alınıyor; kare başına yalnızca tanklar, pompa, borular ve ekranlar çiziliyor. Kare hızı cihaza göre kendini ayarlıyor: boyama süresi bütçenin üçte birini aşarsa aralık uzatılıyor. Oda `walls:false` ile duvarsız çiziliyor.
+**Anasayfa:** `home.html` — **oda değil, salon.** Karşıdan (`view:'front'`) bakılan bir laboratuvar holü: derinlik arttıkça nesneler yukarı ve sağa kayar, boyları küçülmez (çizim mantığı, fotoğraf değil). `walls:false` + `floor:false` ile odanın kabuğu hiç çizilmez; zemin, arka duvar, tavan kanalları ve lambalar sayfanın kendi `hall()` fonksiyonundan gelir ve her kenardan taşacak kadar geniştir. Kamera salonun içinde başlar, sürükle/tekerlek/çift parmak ile gezilir.
+
+Kompozisyon öne bir `brainVat` (3×2,5×5,4 — kataloğun en büyük parçası) koyar; geri kalan her şey ölçekçe ondan küçüktür, böylece ekipman kalabalığının içinde bir özne kalır.
 
 Ölçüm (Chrome işlemci kısma): sürekli halde kare masaüstünde 1 ms, orta telefonda 5 ms, ucuz telefonda 10 ms (12 kare/sn, işlemci yükü ~%12). Açılıştan ilk kareye ucuz telefonda ~1,2 sn.
 

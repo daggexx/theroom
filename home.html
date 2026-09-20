@@ -9,37 +9,37 @@
 *{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink)}
 canvas#stage{width:100%;height:100%;display:block;touch-action:none;cursor:grab}canvas#stage.drag{cursor:grabbing}
 .over{position:fixed;pointer-events:none}
+/* the hall fills the frame, so the words need their own ground to stand on */
+#topfade{left:0;right:0;top:0;height:150px;background:linear-gradient(to bottom,color-mix(in srgb,var(--paper) 86%,transparent) 0%,transparent 100%)}
+#scrim{left:0;right:0;bottom:0;height:60%;background:linear-gradient(to top,var(--paper) 0%,color-mix(in srgb,var(--paper) 92%,transparent) 44%,transparent 100%)}
 #brand{left:34px;top:26px;display:flex;align-items:center;gap:11px}
 #logo-mark{width:52px;height:52px;display:block}
 h1{margin:0;font:600 23px/1 Georgia,serif;letter-spacing:.5px}h1 em{font-style:italic;color:var(--accent)}
 #brand small{display:block;margin-top:4px;font:9px/1.4 monospace;letter-spacing:2.4px;text-transform:uppercase;opacity:.65}
-#scrim{left:0;top:0;bottom:0;width:min(640px,58vw);background:linear-gradient(to right,var(--paper) 0%,color-mix(in srgb,var(--paper) 88%,transparent) 38%,transparent 100%)}
-#pitch{left:34px;top:50%;transform:translateY(-58%);max-width:430px}
-#pitch h2{margin:0;font:600 clamp(30px,4.4vw,52px)/1.12 Georgia,serif}
+#pitch{left:0;right:0;bottom:62px;text-align:center;padding:0 24px}
+#pitch h2{margin:0 auto;max-width:15ch;font:600 clamp(32px,5.2vw,62px)/1.08 Georgia,serif}
 #pitch h2 em{font-style:italic;color:var(--accent)}
-#pitch p{margin:18px 0 0;font:13px/1.85 monospace;max-width:370px;opacity:.8}
-#actions{margin-top:26px;display:flex;flex-wrap:wrap;gap:8px;pointer-events:auto}
-a.cta,button.ghost{display:inline-block;border:1px solid var(--line);background:color-mix(in srgb,var(--paper) 82%,transparent);color:var(--ink);
- padding:12px 18px;font:12px monospace;border-radius:2px;text-decoration:none;cursor:pointer}
+#pitch p{margin:16px auto 0;max-width:46ch;font:13px/1.8 monospace;opacity:.78}
+#actions{margin-top:26px;display:flex;justify-content:center;flex-wrap:wrap;gap:8px;pointer-events:auto}
+a.cta,button.ghost{border:1px solid var(--line);background:color-mix(in srgb,var(--paper) 82%,transparent);color:var(--ink);
+ padding:13px 20px;font:12px monospace;border-radius:2px;text-decoration:none;cursor:pointer}
 a.cta{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 a.cta:hover{background:color-mix(in srgb,var(--ink) 86%,var(--paper))}button.ghost:hover{background:color-mix(in srgb,var(--paper) 88%,var(--ink))}
 a.cta:focus-visible,button.ghost:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#hint{right:34px;bottom:26px;font:10px monospace;letter-spacing:1.4px;opacity:.5;text-align:right}
-#legend{left:34px;bottom:26px;font:10px/1.7 monospace;opacity:.55;max-width:300px}
+#hint{right:30px;bottom:22px;font:10px monospace;letter-spacing:1.4px;opacity:.45}
 @media(max-width:860px){#brand{left:18px;top:16px;gap:8px}#logo-mark{width:40px;height:40px}h1{font-size:19px}
- #pitch{left:18px;right:18px;top:auto;bottom:88px;transform:none;max-width:none}#pitch h2{font-size:clamp(26px,7vw,34px)}
- #pitch p{display:none}#legend{display:none}#hint{right:18px;bottom:16px}}
+ #pitch{bottom:42px}#pitch p{display:none}#scrim{height:70%}#hint{display:none}}
 </style>
-<canvas id="stage" aria-label="Beyinlerin tanklarda tutulduğu, borularla beslendiği izometrik bir araştırma laboratuvarı"></canvas>
+<canvas id="stage" aria-label="Karşıdan görünen bir laboratuvar salonu: sıra sıra tanklarda sıvıya asılı beyinler, üstten geçen borular"></canvas>
+<div class="over" id="topfade"></div>
 <div class="over" id="scrim"></div>
 <div class="over" id="brand"><canvas id="logo-mark" aria-hidden="true"></canvas>
  <div><h1>the<em>room</em></h1><small>ajan laboratuvarı</small></div></div>
 <div class="over" id="pitch">
  <h2>Ajanın kendi <em>odasında</em> çalışır.</h2>
- <p>Odayı sen kurarsın: tankı, pompayı, sinyal direğini yerleştirirsin. Ajan orada çalışır, kazandığını sana getirir.</p>
- <div id="actions"><a class="cta" href="/">Odanı kur →</a><button class="ghost" id="tour">Laboratuvarı gez</button></div>
+ <p>Odayı sen kurarsın. Ajan orada çalışır, kazandığını sana getirir.</p>
+ <div id="actions"><a class="cta" href="/">Odanı kur →</a><button class="ghost" id="tour">Salonu gez</button></div>
 </div>
-<div class="over" id="legend">Tankta bir ajan tutulur. Borular sinyali taşır, pompa besler, direk bağlantıyı kurar.</div>
 <div class="over" id="hint">sürükle · tekerlek ile yakınlaş</div>
 <script src="js/rules.js"></script>
 <script src="js/engine.js"></script>
@@ -52,34 +52,30 @@ a.cta:focus-visible,button.ghost:focus-visible{outline:2px solid var(--accent);o
 <script src="js/room.js"></script>
 <script>
 'use strict';
-// The landing scene: an open platform with no walls, drawn once into a cached picture; only the tanks, pumps,
-// pipes and screens are painted again each frame. The camera roams freely and drifts on its own when left alone.
+// A laboratory hall seen head on. There is no room here — no walls, no floor slab, no grid. Depth comes from the
+// front projection: the further back a thing stands, the higher and further right it sits, at the same size.
+// The hall runs past every edge of the frame on purpose, and the camera starts inside it.
 
-const SCENE={v:1,w:18,d:13,walls:false,look:{wall:'blue',floor:'light',pattern:'tiles',trim:'blue'},items:[
- // the three tanks, under their light bridges
- {type:'gantry',i:4.5,j:3.5,r:0},{type:'gantry',i:9.5,j:3.5,r:0},
- {type:'brainTank',i:5,j:5,r:0},{type:'brainTank',i:7.5,j:5,r:0},{type:'brainTank',i:10,j:5,r:0},
- {type:'signalMast',i:3,j:5,r:0},{type:'signalMast',i:13,j:5,r:0},
- // the feed: pump, pipes along the front, valves at the far end
- {type:'pumpUnit',i:1,j:8.5,r:0},
- ...[3,5,7,9,11].map(i=>({type:'pipeRun',i,j:8.5,r:0})),
- {type:'valveStack',i:13.2,j:8.5,r:0},
- {type:'coolantTank',i:1.5,j:6.5,r:0},{type:'coolantTank',i:1.5,j:4.5,r:0},
- // the control side
- {id:'bench',type:'workbench',i:14.5,j:1.5,r:1},
- {type:'oscilloscope',on:'bench',i:14.5,j:1.5,r:1,mode:'wave'},
- {type:'solderStation',on:'bench',i:14.5,j:2.9,r:1},
- {id:'desk',type:'standingDesk',i:5.5,j:.5,r:0},{type:'ultrawide',on:'desk',i:5.5,j:.5,r:0,mode:'wave'},
- {id:'desk2',type:'deskMedium',i:9,j:.5,r:0},{type:'monitor',on:'desk2',i:9,j:.5,r:0,mode:'orbit'},
- {type:'mechKeyboard',on:'desk2',i:9.5,j:1.5,r:0},
- {type:'gamingChair',i:9.5,j:2.5,r:0},
- {type:'rack',i:12.5,j:.5,r:0},{type:'halfRack',i:15.5,j:5,r:1},
- {type:'robotArm',i:12.5,j:6.5,r:0},{type:'specimenShelf',i:.5,j:1,r:0},
- {type:'partsDrawers',i:2.5,j:1,r:0},{type:'serverCart',i:15.5,j:8,r:1},
- // scatter
- {type:'crate',i:16.5,j:11,r:0},{type:'crate',i:15.5,j:11.5,r:1},{type:'cableTray',i:7,j:10,r:0},
- {type:'plantLarge',i:.5,j:11,r:0},{type:'plantLarge',i:17,j:.5,r:0},{type:'trashBin',i:3.5,j:10.5,r:0},
- {type:'papers',i:11,j:10,r:0},{type:'mug',on:'desk2',i:11,j:1.5,r:0}
+// Depth reads upward and to the right, and nothing shrinks with distance: a drawing, not a photograph.
+Object.assign(STYLES.riso,{view:'front',fw:54,fz:48,fdx:-13,fdy:-15});
+setStyle('riso');   // engine.js already copied the style at load, so it has to be read again
+
+const NEAR=0,MID=4,BACK=7,FAR=10;
+const SCENE={v:1,w:26,d:12,walls:false,floor:false,look:{floor:'light'},items:[
+ // far: a wall of pods, faint, wide enough to leave the frame on both sides
+ ...[[-5,0],[-2,.8],[1,-.6],[7,.5],[10,-.4],[13,1],[16,-.5],[22,.6],[25,-.3]].map(([i,d])=>({type:'tankBank',i,j:FAR+d,r:0})),
+ // middle distance, sparse and offset so nothing lines up into columns
+ ...[-1,7,15,23].map(i=>({type:'halfRack',i,j:BACK,r:0})),
+ ...[-3.5,4.5,12.5,20.5].map(i=>({type:'coolantTank',i,j:BACK-1.4,r:0})),
+ ...[2,18].map(i=>({type:'brainTank',i,j:MID+1.2,r:0})),
+ ...[-2.4,13.6].map((i,k)=>({type:'consolePillar',i,j:MID,r:0,mode:['wave','orbit'][k]})),
+ ...[8.4,20.4].map(i=>({type:'signalMast',i,j:MID+2.4,r:0})),
+ // the subject: three big vats across the front, far enough apart to breathe
+ ...[-4,6,16,26].map(i=>({type:'brainVat',i,j:NEAR+.8,r:0})),
+ // the plant that feeds them, running along the very front and out of frame
+ ...[-6,-2,2,6,10,14,18,22,26].map(i=>({type:'pipeRun',i,j:NEAR-.6,r:0})),
+ ...[0,11,21].map(i=>({type:'pumpUnit',i,j:NEAR-1.6,r:0})),
+ ...[6.5,15.5,24.5].map(i=>({type:'valveStack',i,j:NEAR-1.6,r:0}))
 ]};
 
 // ---- picture ------------------------------------------------------------------
@@ -90,28 +86,60 @@ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function makePaper(){paper.width=paper.height=600;const g=paper.getContext('2d'),r=rng(43);
  g.fillStyle=INK.paper;g.fillRect(0,0,600,600);
  for(let n=0;n<10000;n++){g.fillStyle=S.grain[n%3?0:1];g.fillRect(r()*600,r()*600,r()*1.5+.4,r()*1+.3)}}
-function build(){loadRoom(SCENE);setRoomSize(SCENE.w,SCENE.d);
- base.width=B.w*SCALE;base.height=B.h*SCALE;c=base.getContext('2d');
- c.setTransform(SCALE,0,0,SCALE,-B.x*SCALE,-B.y*SCALE);buildRoom();c=ctx;buildMasks(SCALE)}
 
-// The logo mark: the same tiny room the game draws, so the brand follows the print style.
-function paintLogo(){const cv=document.getElementById('logo-mark'),k=2,previous=c;cv.width=cv.height=52*k;
- c=cv.getContext('2d');c.setTransform(.92,0,0,.92,52,44);
+// The ground and the far wall, drawn well outside the scene so no edge of either is ever in frame.
+function hall(){const WIDE=46,DEEP=12.6,CEIL=6.8;
+ // the far wall, with a deeper band above the pods so the top of the frame is not a flat field
+ const wall=(z0,z1)=>[p(-WIDE,DEEP,z0),p(WIDE,DEEP,z0),p(WIDE,DEEP,z1),p(-WIDE,DEEP,z1)];
+ fill(wall(-1,CEIL+1),'blue',.15,false);
+ fill(wall(3.6,CEIL+1),'blue',.1,false);
+ for(let z=0;z<CEIL;z+=1.2)line([p(-WIDE,DEEP,z),p(WIDE,DEEP,z)],'blue',.9,.12);
+ for(let i=-WIDE;i<=WIDE;i+=6)line([p(i,DEEP,-1),p(i,DEEP,CEIL+1)],'blue',1.2,.1);
+ // round vents high on the wall
+ for(let i=-WIDE+5;i<=WIDE;i+=11){const[x,y]=p(i,DEEP,5.1);
+  shape(ellipse(x,y,26,26,20),'blue',.22,1.1);line(ellipse(x,y,17,17,18),'blue',1,.5,true);
+  for(let k=0;k<6;k++){const a=k/6*TAU;line([[x+Math.cos(a)*5,y+Math.sin(a)*5],[x+Math.cos(a)*25,y+Math.sin(a)*25]],'blue',1.4,.35)}}
+ // the ground, running past every edge
+ const ground=[p(-WIDE,-4,0),p(WIDE,-4,0),p(WIDE,DEEP,0),p(-WIDE,DEEP,0)];
+ fill(ground,'paper',1);fill(ground,'blue',.05,false);
+ for(let j=-4;j<=DEEP;j+=1)line([p(-WIDE,j,0),p(WIDE,j,0)],'blue',.8,.14);
+ for(let i=-WIDE;i<=WIDE;i+=2)line([p(i,-4,0),p(i,DEEP,0)],'blue',.8,.09);
+ // ducts and lamps carried across the hall, filling the band above the tanks
+ for(const[j,z,ink,w]of[[5.4,CEIL-.3,'blue',9],[5.4,CEIL-.75,'coral',6],[8,CEIL+.2,'blue',7]]){
+  const a=p(-WIDE,j,z),b=p(WIDE,j,z);line([a,b],'blue',w+3,.85);line([a,b],ink,w,.7);line([a,b],'paper',1.4,.3)}
+ for(let i=-WIDE;i<=WIDE;i+=4){
+  line([p(i,5.4,CEIL-.3),p(i,5.4,CEIL+1.4)],'blue',2.2,.7);
+  const[x,y]=p(i+2,5.4,CEIL-1.1);
+  shape([[x-17,y],[x+17,y],[x+10,y+12],[x-10,y+12]],'sun',.62);
+  fill(ellipse(x,y+34,30,20,16),'sun',.13,false)}}
+
+function build(){loadRoom(SCENE);setRoomSize(SCENE.w,SCENE.d);
+ // the room bounds do not cover a hall that runs off the sides, so the picture is given room of its own
+ B={x:B.x-980,y:B.y-300,w:B.w+1960,h:B.h+620};VIEW_CX=B.x+B.w/2;VIEW_CY=B.y+B.h/2;
+ base.width=B.w*SCALE;base.height=B.h*SCALE;c=base.getContext('2d');
+ c.setTransform(SCALE,0,0,SCALE,-B.x*SCALE,-B.y*SCALE);
+ hall();buildRoom();c=ctx;buildMasks(SCALE)}
+
+function paintLogo(){const cv=document.getElementById('logo-mark'),previous=c,keep=S.view;
+ cv.width=cv.height=104;c=cv.getContext('2d');S.view='iso';   // the mark stays isometric whatever the hall does
+ c.setTransform(.92,0,0,.92,52,44);
  shape(tile(0,0,1.7,1.7),'teal',.42);shape(faceJ(0,0,1.7,0,1.15),'blue',.72);shape(faceI(0,0,1.7,0,1.15),'blue',.84);
  box(.5,.5,.75,.75,0,.55,'coral',.72);
- const[x,y]=p(.88,.88,.95);glow(x,y,13,13,'sun',.34);dot(x,y,3,'sun');c=previous}
+ const[x,y]=p(.88,.88,.95);glow(x,y,13,13,'sun',.34);dot(x,y,3,'sun');S.view=keep;c=previous}
 
-// The headline owns the left of the screen, so the scene is pushed clear of it.
-function fit(){zoom=Math.max(.3,Math.min((width-40)/B.w,(height-40)/B.h)*1.18);pan={x:width>860?Math.min(300,width*.17):0,y:0}}
-function clampPan(){const limit=Math.max(240,B.w*zoom*.42);pan.x=Math.max(-limit,Math.min(limit,pan.x));
- const vertical=Math.max(180,B.h*zoom*.42);pan.y=Math.max(-vertical,Math.min(vertical,pan.y))}
+// Fill the frame: the hall is always wider and taller than the window, and the eye sits a little above the floor.
+// Close enough that a vat owns the frame, low enough to leave bare floor for the words.
+function look(){const q=p(7.4,NEAR+1.2,3.1);
+ zoom=Math.max(1.1,Math.min(2.1,Math.max(width/1400,height/760)*1.5));
+ pan={x:(VIEW_CX-q[0])*zoom,y:(VIEW_CY-q[1])*zoom-height*.04}}
+function clampPan(){pan.x=Math.max(-1500*zoom,Math.min(1500*zoom,pan.x));
+ pan.y=Math.max(-520*zoom,Math.min(620*zoom,pan.y))}
 function resize(){width=innerWidth;height=innerHeight;dpr=Math.min(2,devicePixelRatio||1);
- canvas.width=width*dpr;canvas.height=height*dpr;fit();paint()}
+ canvas.width=width*dpr;canvas.height=height*dpr;look();paint()}
 
 function paint(){c=ctx;ctx.setTransform(dpr,0,0,dpr,0,0);
  ctx.fillStyle=ctx.createPattern(paper,'repeat');ctx.fillRect(0,0,width,height);
  ctx.translate(width/2+pan.x,height/2+pan.y);ctx.scale(zoom,zoom);ctx.translate(-VIEW_CX,-VIEW_CY);
- shade([p(0,0,-.55),p(ROOM_W+.3,0,-.55),p(ROOM_W+.3,ROOM_D+.3,-.55),p(0,ROOM_D+.3,-.55)],.06);
  ctx.drawImage(base,B.x,B.y,B.w,B.h);
  fast=true;
  for(const s of screens)drawDisplay(s,time);
@@ -119,18 +147,15 @@ function paint(){c=ctx;ctx.setTransform(dpr,0,0,dpr,0,0);
  fast=false}
 
 // ---- loop ---------------------------------------------------------------------
-// The scene breathes at 12 frames a second, like the rest of the game; the camera drifts only when nobody touches it.
-// The scene is redrawn 12 times a second on a machine that can afford it. On a slow phone that would pin a
-// core, so the gap is stretched to keep painting under a third of the time available; at this frame rate and in
-// this print style the motion still reads.
+// Twelve frames a second where that is cheap; on a slow phone the gap widens so painting stays under a third of
+// the time available. In this print style the motion still reads at a lower rate.
 let last=0,paintAt=0,idleSince=0,drifting=true,cost=16,gap=83;
 function loop(now){requestAnimationFrame(loop);
  if(last&&!reduced)time+=Math.min(.1,(now-last)/1000);last=now;
- if(drifting&&!reduced&&now-idleSince>2500){pan.x-=.22;pan.y+=.055;clampPan()}
+ if(drifting&&!reduced&&now-idleSince>2500){pan.x-=.16;clampPan()}
  if(now-paintAt>gap||!paintAt){
   const started=performance.now();paint();paintAt=now;
-  cost=cost*.8+(performance.now()-started)*.2;
-  gap=Math.min(320,Math.max(83,cost*3))}}
+  cost=cost*.8+(performance.now()-started)*.2;gap=Math.min(320,Math.max(83,cost*3))}}
 
 // ---- camera -------------------------------------------------------------------
 const stage=document.getElementById('stage');
@@ -142,27 +167,25 @@ stage.addEventListener('pointerdown',e=>{stage.setPointerCapture(e.pointerId);po
 stage.addEventListener('pointermove',e=>{const prev=pointers.get(e.pointerId);if(!prev)return;
  pointers.set(e.pointerId,[e.clientX,e.clientY]);touched();
  if(pointers.size===2&&pinch){const[a,b]=[...pointers.values()];
-  zoom=Math.max(.3,Math.min(3.4,pinch.z*Math.hypot(a[0]-b[0],a[1]-b[1])/Math.max(1,pinch.d)))}
+  zoom=Math.max(.5,Math.min(3,pinch.z*Math.hypot(a[0]-b[0],a[1]-b[1])/Math.max(1,pinch.d)))}
  else{pan.x+=e.clientX-prev[0];pan.y+=e.clientY-prev[1]}clampPan();paintAt=0});
 function release(e){pointers.delete(e.pointerId);pinch=null;if(!pointers.size)stage.classList.remove('drag');touched()}
 stage.addEventListener('pointerup',release);stage.addEventListener('pointercancel',release);
 stage.addEventListener('wheel',e=>{e.preventDefault();touched();const old=zoom;
- zoom=Math.max(.3,Math.min(3.4,zoom*Math.exp(-e.deltaY*.0011)));const k=zoom/old;
+ zoom=Math.max(.5,Math.min(3,zoom*Math.exp(-e.deltaY*.0011)));const k=zoom/old;
  pan.x=e.clientX-width/2-(e.clientX-width/2-pan.x)*k;pan.y=e.clientY-height/2-(e.clientY-height/2-pan.y)*k;
  clampPan();paintAt=0},{passive:false});
-addEventListener('keydown',e=>{if(e.key==='0'){fit();touched();paintAt=0}});
+addEventListener('keydown',e=>{if(e.key==='0'){look();touched();paintAt=0}});
 addEventListener('resize',resize);
 
-// A guided look at the tanks, for anyone who does not think to drag.
-document.getElementById('tour').onclick=()=>{
- const target={zoom:1.75,x:-70,y:120},from={zoom,x:pan.x,y:pan.y},t0=performance.now();
- drifting=false;
- (function step(now){const f=Math.min(1,(now-t0)/900),e=f<.5?2*f*f:1-(2-2*f)**2/2;
-  zoom=from.zoom+(target.zoom-from.zoom)*e;pan.x=from.x+(target.x-from.x)*e;pan.y=from.y+(target.y-from.y)*e;
-  paintAt=0;if(f<1)requestAnimationFrame(step);else{idleSince=performance.now();drifting=true}})(t0)};
+// A slow pass along the hall, for anyone who does not think to drag.
+document.getElementById('tour').onclick=()=>{const from=pan.x,t0=performance.now();drifting=false;
+ (function step(now){const f=Math.min(1,(now-t0)/2600),e=f<.5?2*f*f:1-(2-2*f)**2/2;
+  pan.x=from-820*e;clampPan();paintAt=0;
+  if(f<1)requestAnimationFrame(step);else{idleSince=performance.now();drifting=true}})(t0)};
 
 width=innerWidth;height=innerHeight;dpr=Math.min(2,devicePixelRatio||1);
 canvas.width=width*dpr;canvas.height=height*dpr;
-makePaper();build();paintLogo();fit();idleSince=performance.now();requestAnimationFrame(loop);
+makePaper();build();paintLogo();look();idleSince=performance.now();requestAnimationFrame(loop);
 </script>
 </html>
